@@ -76,8 +76,9 @@ order Done, Overdue, Pending; keep that order, because teal next to blue fails.
 1. Put a JPG or WebP (about 800px wide, compressed) in `assets/img/`.
 2. Map it in `config.js` → `images`. Keys are a species name (`'Persian Leopard'`), an animal
    ID (`'PL-014'`), `'collectionsHero'`, `'announcement:0'` or `'avatar:RS'`.
-3. Add its source, author and licence to `assets/img/CREDITS.md`, with attribution where the
-   licence needs it (CC BY).
+3. Add its source, author and licence to `assets/img/CREDITS.md` and to `config.js` → `credits`.
+   The `credits` list is shown in the app under Profile menu → Photo credits, which covers the
+   attribution CC BY and CC BY-SA require.
 
 Images load lazily, are cropped to fit, carry alt text, and fall back to the grey placeholder
 if the file is missing. Keys without an entry never request a file.

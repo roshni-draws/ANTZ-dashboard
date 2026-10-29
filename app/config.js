@@ -21,7 +21,38 @@ window.ANTZ_CONFIG = {
   /* ── Images: drop files into assets/img/ and map them here (see assets/img/CREDITS.md).
      Keys: species names, animal IDs, 'collectionsHero', 'announcement:<index>', 'avatar:<initials>'.
      Anything without an entry shows the grey placeholder, so the app never loads a missing file. ── */
-  images: {},
+  images: {
+    'Persian Leopard': 'assets/img/leopard.jpg',
+    'PL-014': 'assets/img/cubs.jpg',      /* Zara and Kian are 6-month cubs */
+    'PL-015': 'assets/img/cubs.jpg',
+    'African Wild Dog': 'assets/img/wild-dog.jpg',
+    'Asiatic Lion': 'assets/img/lion.jpg',
+    'Indian Rhinoceros': 'assets/img/rhino.jpg',
+    'Great Hornbill': 'assets/img/hornbill.jpg',
+    'Gharial': 'assets/img/gharial.jpg',
+    'Indian Star Tortoise': 'assets/img/tortoise.jpg',
+    'Purple Frog': 'assets/img/purple-frog.jpg',
+    collectionsHero: 'assets/img/savannah.jpg',
+    'announcement:0': 'assets/img/cubs.jpg',
+    'announcement:1': 'assets/img/wild-dog-pack.jpg'
+    /* No 'avatar:RS' photo: the header avatar shows initials. */
+  },
+
+  /* ── Photo credits: shown under Profile menu > Photo credits. One row per bundled
+     photo; CC BY / CC BY-SA licences require this attribution. ── */
+  credits: [
+    { file: 'leopard.jpg', subject: 'Indian leopard, Jawai', author: 'Tisha Mukherjee', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Indian_leopard_in_Jawai_Bandh_April_2025_by_Tisha_Mukherjee_02.jpg' },
+    { file: 'wild-dog.jpg', subject: 'African wild dog', author: 'Mathias Appel', licence: 'CC0 1.0', licenceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/', source: 'https://commons.wikimedia.org/wiki/File:African_wild_dog_(25130605669).jpg' },
+    { file: 'lion.jpg', subject: 'Asiatic lion, Gir National Park', author: 'Rohit Sharma', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Portrait_of_an_Asiatic_lion_at_Gir_National_Park_02.jpg' },
+    { file: 'rhino.jpg', subject: 'Indian rhinoceros', author: 'Charles J. Sharp', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Indian_rhinoceros_(Rhinoceros_unicornis)_4.jpg' },
+    { file: 'hornbill.jpg', subject: 'Great hornbill', author: 'Malyasri Bhattacharya', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Great_Hornbill_(Buceros_bicornis).jpg' },
+    { file: 'gharial.jpg', subject: 'Gharial, female and juvenile', author: 'Charles J. Sharp', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Gharial_(Gavialis_gangeticus)_female_and_juvenile.jpg' },
+    { file: 'tortoise.jpg', subject: 'Indian star tortoise, Gujarat', author: 'Malaika the jackal researcher', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Indian_star_tortoise_(Geochelone_elegans)_in_Gujarat.jpg' },
+    { file: 'purple-frog.jpg', subject: 'Purple frog', author: 'Karthickbala (ta.wikipedia)', licence: 'CC BY-SA 3.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/3.0/', source: 'https://commons.wikimedia.org/wiki/File:Nasikabatrachus_sahyadrensis.jpg' },
+    { file: 'savannah.jpg', subject: 'Savanna grassland', author: 'Javier Puig Ochoa', licence: 'CC BY 3.0', licenceUrl: 'https://creativecommons.org/licenses/by/3.0/', source: 'https://commons.wikimedia.org/wiki/File:Savanna_Grasslands_(199168845).jpeg' },
+    { file: 'cubs.jpg', subject: 'Leopard cubs, Satpura', author: 'Siddharth Biniwale', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Leopard_Cubs_Satpura.jpg' },
+    { file: 'wild-dog-pack.jpg', subject: 'African wild dog pack', author: 'Bernard Dupont', licence: 'CC BY-SA 2.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/2.0/', source: 'https://commons.wikimedia.org/wiki/File:African_Wild_Dogs_(Lycaon_pictus)_pack_..._(52996795047).jpg' }
+  ],
 
   /* ── Modules ────────────────────────────────────────────────────────────
      One entry per module. Each one automatically becomes an app icon, an App

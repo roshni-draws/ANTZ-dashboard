@@ -756,7 +756,8 @@
                ['Dark', function () { applyTheme('dark', true); }, 'dark_mode', 0, cur === 'dark'],
                ['System', function () { applyTheme('system', true); }, 'contrast', 0, cur === 'system'],
                '-',
-               ['My profile', function () { toast('Profile · ' + u.full); }, 'person']];
+               ['My profile', function () { toast('Profile · ' + u.full); }, 'person'],
+               ['Photo credits', function () { openCredits(); }, 'photo_library']];
     } else {
       title = 'Home Screen';
       items = [['Add Widget', function () { setEditing(true); openGallery(); }, 'plus'], ['Customize', function () { toast('Customize · icon size and dark/tinted icons'); }, 'grid'], ['Edit Wallpaper', function () { toast('Edit Wallpaper'); }, 'grid'], ['Edit Pages', function () { setEditing(true); toast('Edit Pages · show, hide and reorder pages'); }, 'grid'], ['Edit Home Screen', function () { setEditing(true); }, 'grid']];
@@ -884,6 +885,20 @@
       }).join('') + '</ul>' +
       '<div class="stack-opts"><button type="button" class="switch" data-act="smart" aria-pressed="' + S.smartRotate + '"><span class="sw" aria-hidden="true"></span>Smart Rotate</button><button type="button" class="switch" data-act="sugg" aria-pressed="' + S.suggestions + '"><span class="sw" aria-hidden="true"></span>Widget Suggestions</button></div>' +
       '<button type="button" class="btn btn--ghost btn--block" data-act="stackAdd">' + icon('plus') + 'Add a widget to this stack</button></div></div>';
+    $('.sheet button', root).focus(); syncInert(); updateTitle();
+  }
+
+  /* Photo credits: attribution required by CC BY / CC BY-SA photos (config.credits) */
+  function openCredits() {
+    closeOverlay(true); opener = document.querySelector('[data-act="profile"]') || document.activeElement; S.overlay = 'credits';
+    var cr = CFG.credits || [];
+    root.innerHTML = '<div class="sheet-wrap" data-act="closeOverlayBg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="crH"><div class="sheet__grip" aria-hidden="true"></div>' +
+      '<div class="sheet__hd"><h2 id="crH">Photo credits</h2><button type="button" class="pill-btn pill-btn--dark" data-act="closeOverlay">Done</button></div>' +
+      '<p class="credits__note">Photos from Wikimedia Commons, used under the licences below. Some were cropped and resized.</p>' +
+      '<ul class="credits">' + cr.map(function (c) {
+        return '<li><span class="ph media credits__th"><img src="assets/img/' + esc(c.file) + '" alt="" loading="lazy" onerror="this.remove()"></span><div><b>' + esc(c.subject) + '</b>' +
+          '<small><a href="' + esc(c.source) + '" target="_blank" rel="noopener noreferrer">Photo: ' + esc(c.author) + '</a>, <a href="' + esc(c.licenceUrl) + '" target="_blank" rel="noopener noreferrer license">' + esc(c.licence) + '</a></small></div></li>';
+      }).join('') + '</ul></div></div>';
     $('.sheet button', root).focus(); syncInert(); updateTitle();
   }
 
