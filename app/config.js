@@ -14,8 +14,14 @@ window.ANTZ_CONFIG = {
      A person's own choice (header toggle / avatar menu) is saved and wins over this. ── */
   theme: 'system',
 
-  /* ── Sites for the site picker (first entry = default) ──────────────── */
-  sites: ['All sites', 'Clearspring', 'Crimson Frosted', 'Foxglen', 'Hollowpine'],
+  /* ── Sites: shown in the header site switcher. data.js gives each one its own
+     sample numbers; "All sites" (always first in the switcher) is their sum. ── */
+  sites: ['Crimson Frosted', 'Clearspring', 'Hollowpine', 'Foxglen', 'Ambergrove', 'Silverbrook', 'Redcliff', 'Mistvale', 'Larkspur'],
+
+  /* ── Images: drop files into assets/img/ and map them here (see assets/img/CREDITS.md).
+     Keys: species names, animal IDs, 'collectionsHero', 'announcement:<index>', 'avatar:<initials>'.
+     Anything without an entry shows the grey placeholder, so the app never loads a missing file. ── */
+  images: {},
 
   /* ── Modules ────────────────────────────────────────────────────────────
      One entry per module. Each one automatically becomes an app icon, an App
@@ -27,6 +33,9 @@ window.ANTZ_CONFIG = {
        group        shown under the name in search results
        badge        optional count on the icon; badgeLabel is read by screen readers ("3 unread")
        widget       optional custom renderer name in app.js (WIDGETS); default is 'stats'
+       chart        chart type for the stats widget: 'line' | 'area' | 'columns' | 'stackedBar' |
+                    'donut' | 'hbar' | 'gauge' | 'heatmap'. The numbers come from data.js
+                    (moduleStats) for the selected site; 'stats' below is the fallback.
        stats        data for the default stats widget:
                       k  [headline, label]                    Small
                       t  short trend pill                     Small
@@ -43,41 +52,41 @@ window.ANTZ_CONFIG = {
     { id: 'communication', name: 'Communication', sub: 'Chats with your teams', icon: 'chat', colour: '#39656E', glyph: 'light', group: 'Team', badge: 3, badgeLabel: 'unread', widget: 'communication', description: 'Unread chats from your teams.', shortcuts: [{ label: 'New message', toast: 'New message' }, { label: 'Kai Vance', open: { chat: 0 } }] },
     { id: 'focus', name: 'Focus Hub', sub: 'Likes and bookmarks', icon: 'bookmarks', colour: '#8479F9', glyph: 'light', group: 'Team', widget: 'focus', description: 'Counts of what you liked and bookmarked, plus recent saves.', shortcuts: [{ label: 'Liked', open: { tab: 'liked' } }, { label: 'Bookmarked', open: { tab: 'bm' } }] },
     { id: 'help', name: 'Help Desk', sub: 'Tickets and support', icon: 'support_agent', colour: '#00AFD6', glyph: 'light', group: 'Admin', badge: 2, badgeLabel: 'open tickets', widget: 'help', description: 'Your open tickets and a quick way to raise one.', shortcuts: [{ label: 'Raise a ticket', open: { form: 1 } }] },
-    { id: 'medical', name: 'Medical', sub: 'Treatments', icon: 'medical_services', colour: '#549C76', glyph: 'light', group: 'Medical & care',
+    { id: 'medical', chart: 'line', name: 'Medical', sub: 'Treatments', icon: 'medical_services', colour: '#549C76', glyph: 'light', group: 'Medical & care',
       stats: { k: ['12', 'animals in treatment'], t: '↑ 2 this week', m: [['12', 'In treatment'], ['27', 'Follow-ups overdue'], ['5', 'In hospital'], ['3', 'Critical']], c: { type: 'bars', d: [4, 2, 1, 3, 0, 1, 0, 1, 0], cap: 'In treatment by site' }, l: [['Tara · PL-001', 'Wound care'], ['Gharial 07', 'Respiratory'], ['Rhino 02', 'Foot abscess']] } },
-    { id: 'administer', name: 'Administer', sub: 'Vaccines, deworming', icon: 'vaccines', colour: '#A4B8AC', glyph: 'dark', group: 'Medical & care',
+    { id: 'administer', chart: 'stackedBar', name: 'Administer', sub: 'Vaccines, deworming', icon: 'vaccines', colour: '#A4B8AC', glyph: 'dark', group: 'Medical & care',
       stats: { k: ['462', 'doses overdue'], t: '↑ 31 since Monday', m: [['143', 'Vaccines overdue'], ['319', 'Deworming overdue'], ['58', 'Due this week']], c: { type: 'bars', d: [96, 74, 61, 55, 48, 41, 37, 29, 21], cap: 'Overdue doses by site' }, l: [['Indian Star Tortoise', '96'], ['Gharial', '41'], ['Asiatic Lion', '18']] } },
-    { id: 'animals', name: 'Animals', sub: 'Records, sexing, microchips', icon: 'cruelty_free', colour: '#37BD69', glyph: 'light', group: 'Animals',
+    { id: 'animals', chart: 'area', name: 'Animals', sub: 'Records, sexing, microchips', icon: 'cruelty_free', colour: '#37BD69', glyph: 'light', group: 'Animals',
       stats: { k: ['643', 'newly added'], t: 'across 9 sites', m: [['110,020', 'Animals'], ['643', 'Newly added'], ['28,532', 'Sexing pending'], ['20,302', 'Microchip pending']], c: { type: 'bars', d: [120, 96, 88, 80, 71, 64, 52, 40, 32], cap: 'New animals by site' }, l: [['Crimson Frosted', '120'], ['Clearspring', '96'], ['Hollowpine', '88']] } },
-    { id: 'housing', name: 'Housing', sub: 'Sites, sections, enclosures', icon: 'home_work', colour: '#5A8088', glyph: 'light', group: 'Animals',
+    { id: 'housing', chart: 'donut', name: 'Housing', sub: 'Sites, sections, enclosures', icon: 'home_work', colour: '#5A8088', glyph: 'light', group: 'Animals',
       stats: { k: ['86%', 'enclosures occupied'], t: '9 inspections overdue', m: [['9', 'Sites'], ['115', 'Sections'], ['9,937', 'Enclosures'], ['86%', 'Occupied']], c: { type: 'donut', d: [86], cap: 'Occupancy across 9,937 enclosures' }, l: [['Big Cat House · E4', 'Inspection'], ['Aviary 2', 'Inspection'], ['Reptile House · R9', 'Repair']] } },
-    { id: 'diet', name: 'Diet', sub: 'Diet plans and kitchen', icon: 'restaurant', colour: '#FB7456', glyph: 'light', group: 'Medical & care',
+    { id: 'diet', chart: 'heatmap', name: 'Diet', sub: 'Diet plans and kitchen', icon: 'restaurant', colour: '#FB7456', glyph: 'light', group: 'Medical & care',
       stats: { k: ['412', 'feeds today'], t: '24 still to do', m: [['412', 'Feeds today'], ['388', 'Done'], ['24', 'Pending'], ['3', 'Diet changes']], c: { type: 'line', d: [380, 402, 395, 410, 398, 405, 412], cap: 'Feeds per day · 7 days' }, l: [['Carnivore Section', '16:00'], ['Primates', '16:30'], ['Aviary', '17:00']] } },
-    { id: 'lab', name: 'Lab', sub: 'Samples, results', icon: 'science', colour: '#D4BA78', glyph: 'dark', group: 'Medical & care',
+    { id: 'lab', chart: 'columns', name: 'Lab', sub: 'Samples, results', icon: 'science', colour: '#D4BA78', glyph: 'dark', group: 'Medical & care',
       stats: { k: ['41', 'results to review'], t: '6 flagged', m: [['41', 'To review'], ['76', 'In process'], ['6', 'Flagged']], c: { type: 'bars', d: [14, 9, 7, 6, 5], cap: 'To review by test type' }, l: [['Blood panel · PL-001', 'Flagged'], ['Faecal · Gharial 07', 'Ready'], ['Swab · Rhino 02', 'Ready']] } },
-    { id: 'pharmacy', name: 'Pharmacy', sub: 'Stock and orders', icon: 'medication', colour: '#1ABEB6', glyph: 'light', group: 'Medical & care',
+    { id: 'pharmacy', chart: 'hbar', name: 'Pharmacy', sub: 'Stock and orders', icon: 'medication', colour: '#1ABEB6', glyph: 'light', group: 'Medical & care',
       stats: { k: ['18', 'items low on stock'], t: '4 expire this month', m: [['18', 'Low stock'], ['23', 'Refills due'], ['4', 'Expiring']], c: { type: 'bars', d: [12, 25, 30, 45, 60, 72, 80], cap: 'Lowest items, % of minimum stock' }, l: [['Meloxicam 1.5 mg/ml', '12%'], ['Ivermectin 1%', '25%'], ['Amoxicillin 250 mg', '30%']] } },
-    { id: 'mortality', name: 'Mortality', sub: 'Deaths recorded', icon: 'monitor_heart', colour: '#FB8971', glyph: 'light', group: 'Animals',
+    { id: 'mortality', chart: 'area', name: 'Mortality', sub: 'Deaths recorded', icon: 'monitor_heart', colour: '#FB8971', glyph: 'light', group: 'Animals',
       stats: { k: ['192', 'deaths · 7 days'], t: '30D: 611', m: [['192', '7 days'], ['611', '30 days'], ['2,140', '30+ days']], c: { type: 'line', d: [130, 150, 170, 140, 165, 150, 192], cap: 'Deaths per week' }, l: [['Fish', '88'], ['Birds', '54'], ['Reptiles', '31']] } },
-    { id: 'eggs', name: 'Eggs', sub: 'Clutch to hatch', icon: 'egg', colour: '#46CADE', glyph: 'dark', group: 'Animals',
+    { id: 'eggs', chart: 'columns', name: 'Eggs', sub: 'Clutch to hatch', icon: 'egg', colour: '#46CADE', glyph: 'dark', group: 'Animals',
       stats: { k: ['37', 'eggs incubating'], t: '12 checks due', m: [['37', 'Incubating'], ['12', 'Checks due'], ['9', 'Hatched · 30D']], c: { type: 'bars', d: [2, 4, 3, 6, 5, 8, 9], cap: 'Hatched per week' }, l: [['Great Hornbill · clutch 3', 'Day 31/40'], ['Gharial · nest 2', 'Day 52/70'], ['Star Tortoise · nest 5', 'Day 88/120']] } },
-    { id: 'necropsy', name: 'Necropsy', sub: 'Reports', icon: 'biotech', colour: '#39656E', glyph: 'light', group: 'Animals',
+    { id: 'necropsy', chart: 'line', name: 'Necropsy', sub: 'Reports', icon: 'biotech', colour: '#39656E', glyph: 'light', group: 'Animals',
       stats: { k: ['14,296', 'reports pending'], t: '38 drafts', m: [['14,296', 'Pending'], ['38', 'Drafts'], ['112', 'Done · 30D']], c: { type: 'bars', d: [80, 95, 110, 102, 112], cap: 'Completed per month' }, l: [['Fish · batch 1102', 'Pending'], ['Hornbill 04', 'Draft'], ['Antelope 19', 'Pending']] } },
-    { id: 'fetal', name: 'Fetal death', sub: 'Records', icon: 'heart_broken', colour: '#F7778E', glyph: 'light', group: 'Animals',
+    { id: 'fetal', chart: 'columns', name: 'Fetal death', sub: 'Records', icon: 'heart_broken', colour: '#F7778E', glyph: 'light', group: 'Animals',
       stats: { k: ['6', 'records · 30 days'], t: '↓ 2 vs last month', m: [['6', '30 days'], ['41', 'This year'], ['2', 'Await necropsy']], c: { type: 'bars', d: [3, 5, 4, 2, 6, 8, 6], cap: 'Records per month' }, l: [['Blackbuck · F-112', '12 Oct'], ['Spotted deer · F-109', '08 Oct'], ['Nilgai · F-104', '02 Oct']] } },
-    { id: 'approvals', name: 'Approvals', sub: 'Transfers and requests', icon: 'task_alt', colour: '#305068', glyph: 'light', group: 'Operations', badge: 16, badgeLabel: 'pending',
+    { id: 'approvals', chart: 'donut', name: 'Approvals', sub: 'Transfers and requests', icon: 'task_alt', colour: '#305068', glyph: 'light', group: 'Operations', badge: 16, badgeLabel: 'pending',
       stats: { k: ['16', 'requests pending'], t: 'oldest: 3 days', m: [['16', 'Pending'], ['42', 'Approved'], ['3', 'Rejected']], c: { type: 'donut', d: [69], cap: 'Approved · last 30 days' }, l: [['Transfer · Asiatic Lion ×2', '3 days'], ['Transfer · Gharial ×4', '2 days'], ['Loan · Hornbill ×1', '1 day']] } },
-    { id: 'audit', name: 'Audit', sub: 'Animal audit by site', icon: 'fact_check', colour: '#D0526C', glyph: 'light', group: 'Operations',
+    { id: 'audit', chart: 'hbar', name: 'Audit', sub: 'Animal audit by site', icon: 'fact_check', colour: '#D0526C', glyph: 'light', group: 'Operations',
       stats: { k: ['68%', 'animal audit score'], t: 'LIVE · 3 sites under 60%', m: [['68%', 'Audit score'], ['91%', 'Best site'], ['3', 'Sites < 60%']], c: { type: 'bars', d: [91, 84, 77, 72, 66, 61, 58, 52, 47], cap: 'Score by site' }, l: [['Larkspur', '47%'], ['Mistvale', '52%'], ['Redcliff', '58%']] } },
-    { id: 'reports', name: 'Reports', sub: 'Exports and insights', icon: 'bar_chart', colour: '#1ABEB6', glyph: 'light', group: 'Operations',
+    { id: 'reports', chart: 'line', name: 'Reports', sub: 'Exports and insights', icon: 'bar_chart', colour: '#1ABEB6', glyph: 'light', group: 'Operations',
       stats: { k: ['3', 'reports ready'], t: '5 scheduled', m: [['3', 'Ready'], ['5', 'Scheduled'], ['12', 'Exports · Oct']], c: { type: 'line', d: [6, 9, 7, 11, 8, 12], cap: 'Exports per month' }, l: [['Natality report · Oct', 'Ready'], ['Inventory report', 'Ready'], ['Mortality report', 'Mon']] } },
-    { id: 'users', name: 'Users', sub: 'Staff and roles', icon: 'group', colour: '#2F5A67', glyph: 'light', group: 'Admin',
+    { id: 'users', chart: 'hbar', name: 'Users', sub: 'Staff and roles', icon: 'group', colour: '#2F5A67', glyph: 'light', group: 'Admin',
       stats: { k: ['286', 'active today'], t: 'of 1,240 staff', m: [['1,240', 'Staff'], ['286', 'Active today'], ['14', 'Invites pending'], ['6', 'Roles']], c: { type: 'bars', d: [420, 310, 220, 160, 90, 40], cap: 'Staff by role' }, l: [['Keepers', '420'], ['Veterinary', '310'], ['Maintenance', '220']] } },
-    { id: 'security', name: 'Security', sub: 'Gates and access', icon: 'shield', colour: '#79847D', glyph: 'light', group: 'Operations',
+    { id: 'security', chart: 'columns', name: 'Security', sub: 'Gates and access', icon: 'shield', colour: '#79847D', glyph: 'light', group: 'Operations',
       stats: { k: ['2', 'open incidents'], t: '48 gates online', m: [['2', 'Open incidents'], ['48', 'Gates online'], ['12', 'Patrols today']], c: { type: 'line', d: [1, 0, 2, 1, 3, 0, 2], cap: 'Incidents per day' }, l: [['Perimeter fence · Z4', 'Open'], ['Night house alarm', 'Open'], ['North gate panel', 'Closed']] } },
-    { id: 'compliance', name: 'Compliance', sub: 'Licences and checks', icon: 'verified_user', colour: '#1F515B', glyph: 'light', group: 'Operations',
+    { id: 'compliance', chart: 'gauge', name: 'Compliance', sub: 'Licences and checks', icon: 'verified_user', colour: '#1F515B', glyph: 'light', group: 'Operations',
       stats: { k: ['4', 'renewals due · 30 days'], t: '1 overdue', m: [['37', 'Licences'], ['4', 'Due · 30 days'], ['1', 'Overdue']], c: { type: 'donut', d: [89], cap: 'Licences current' }, l: [['Pharmacy licence', 'Overdue'], ['CZA recognition', '12 Nov'], ['Fire safety check', '30 Nov']] } },
-    { id: 'tags', name: 'Tags', sub: 'Labels and IDs', icon: 'sell', colour: '#E0A21B', glyph: 'dark', group: 'Animals',
+    { id: 'tags', chart: 'hbar', name: 'Tags', sub: 'Labels and IDs', icon: 'sell', colour: '#E0A21B', glyph: 'dark', group: 'Animals',
       stats: { k: ['1,204', 'animals untagged'], t: '320 printed this week', m: [['1,204', 'Untagged'], ['320', 'Printed · week'], ['58', 'Reprints']], c: { type: 'bars', d: [40, 62, 58, 75, 85], cap: 'Tags printed per week' }, l: [['Fish · batch 1102', '410'], ['Indian Star Tortoise', '126'], ['Reptiles · misc', '92']] } }
   ],
 
@@ -90,6 +99,9 @@ window.ANTZ_CONFIG = {
               { stack: 'Name', size: 'M', items: ['id', 'id'] }  a swipeable widget stack
               { widget: 'item', ref: { type: 'animal', id: 'PL-014' }, size: 'M' }
                                                                   a saved item as its own widget
+              { widget: 'kpi', metric: 'animals' | 'health' | 'overdue' | 'mortality' | 'audit', size: 'S' }
+                                                                  a Command Centre KPI card (sparkline + change)
+              { widget: 'attention', size: 'L' }                  the Needs attention list
                 ref types: 'animal' (id = animal ID), 'species' | 'note' | 'announcement'
                 (id = name/title, or the index in the lists under data). Stacks can hold
                 items too: items: ['medical', { type: 'item', ref: { type: 'note', id: 0 } }]
@@ -99,16 +111,29 @@ window.ANTZ_CONFIG = {
     maxPins: 8,
     dock: ['collections', 'communication', 'notes', 'focus'],
     pages: [
+      /* page 1: Command Centre overview (KPI row, Needs attention, charts) */
+      [
+        { widget: 'kpi', metric: 'animals', size: 'S', id: 'kpi-animals' },
+        { widget: 'kpi', metric: 'health', size: 'S', id: 'kpi-health' },
+        { widget: 'kpi', metric: 'overdue', size: 'S', id: 'kpi-overdue' },
+        { widget: 'kpi', metric: 'mortality', size: 'S', id: 'kpi-mortality' },
+        { widget: 'kpi', metric: 'audit', size: 'S', id: 'kpi-audit' },
+        { widget: 'attention', size: 'L', id: 'attention' },
+        { widget: 'mortality', size: 'M', id: 'cc-mortality' },
+        { widget: 'compliance', size: 'S', id: 'cc-compliance' },
+        { widget: 'administer', size: 'M', id: 'cc-vacc' },
+        { widget: 'housing', size: 'S', id: 'cc-housing' }
+      ],
       [
         { stack: 'Updates', size: 'M', items: ['announcements', 'focus'] },
-        { widget: 'collections', size: 'S' },
+        { widget: 'collections', size: 'M' },
         { widget: 'communication', size: 'S' },
+        { widget: 'item', ref: { type: 'animal', id: 'PL-014' }, size: 'M' },
         { app: 'notes' }, { app: 'collections' }, { app: 'announcements' }, { app: 'communication' }, { app: 'focus' },
         { app: 'help' }, { app: 'medical' }, { app: 'administer' }, { app: 'animals' }, { app: 'housing' },
         { widget: 'notes', size: 'M' },
-        { widget: 'administer', size: 'M' },
         { widget: 'approvals', size: 'S' },
-        { widget: 'item', ref: { type: 'animal', id: 'PL-014' }, size: 'M' }
+        { widget: 'diet', size: 'M' }
       ],
       [
         { stack: 'Health', size: 'M', items: ['medical', 'lab', 'pharmacy'] },

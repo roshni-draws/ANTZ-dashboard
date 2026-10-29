@@ -11,13 +11,76 @@ No build step. Double-click `index.html`, or serve the folder (`python3 -m http.
 |---|---|
 | `index.html` | Markup only: header, springboard, dock, app window, the six app screens |
 | `styles.css` | 1. Style 1 tokens (colours, fonts, radii, shadows) · 2. base · 3. components · 4. responsive |
-| `config.js` | **All content**: user, modules, stats, home layout, dock, notifications, sample data |
+| `config.js` | **All content**: user, sites, images, modules (with chart type), home layout, dock, notifications, sample records |
+| `data.js` | Seeded sample-data generator: per-site numbers and 12-week series, used by every widget |
+| `assets/img/` | Photos (see `CREDITS.md`); none are bundled yet, so placeholders show |
 | `app.js` | Behaviour. Reads `window.ANTZ_CONFIG`; you rarely need to touch it |
 
 Layout follows the screen width: phone ≤ 640px (4 columns, dock of 4), tablet 641–1239px
 (6 columns), desktop ≥ 1240px (10 columns, dock of 6).
 
+Page 1 is the **Command Centre**: site and date heading, five KPI cards (with change vs last week
+and a 12-week sparkline), a Needs attention list and four chart widgets. Every piece is still a
+widget, so you can move, resize and remove it in edit mode. Pages 2+ are the app springboard.
+
 ## Recipes
+
+### Switch site (and add a site)
+The **Site** button in the header opens a searchable list of sites, each with its animal count.
+Picking one re-scopes every number on the home screen, and the Command Centre heading shows the
+active site. The choice is saved as `antz-site`. On a first visit the button pulses once with
+a "Switch site here" tip. Dismissing it is remembered as `antz-site-hint`; reduced motion turns
+the pulse off.
+
+To add a site, add its name to `sites` in `config.js`. `data.js` generates its numbers, and
+"All sites" is always the sum of the sites (percentages are weighted by animals).
+
+### Sample data (data.js)
+`data.js` builds all figures from a seeded random generator (`SEED`), so the numbers are stable
+across reloads and identical wherever they appear. For example, the Overdue tasks KPI equals
+the sum of the Needs attention list, and Mortality 7 days equals the last point of the
+Mortality chart. It produces:
+- per site: animals, species, enclosures and occupancy, health cases, overdue and pending work,
+  audit score, approvals, licences, staff, feeds per day
+- 12 weeks of series for each site: treatment, mortality, new animals, overdue, audit, animals
+- the KPI cards (`ANTZ_DATA.kpi`), the Needs attention list (`ANTZ_DATA.attention`) and each
+  module's stats (`ANTZ_DATA.moduleStats`)
+
+Change `SEED` for a different dataset. To feed a new module, add a `case` to `moduleStats()`.
+It returns `{ k, t, m, c, l }`, the same shape as `stats` in config. Everything is clearly
+sample data: the dashboard heading and the profile menu say so.
+
+### Chart types
+Set `chart` on a module in `config.js`. The renderers live in `CHARTS` in `app.js`, as
+hand-rolled SVG/HTML with no library, so they work offline. Each has a text summary
+(`aria-label`), a hover tooltip on every mark, and the summary as a tooltip when the widget
+has keyboard focus.
+
+| `chart` | Use for | Data (`c` in stats) |
+|---|---|---|
+| `line` | trends | `{ cap, series: [..12], labels, unit }` |
+| `area` | trends from zero (mortality, new animals) | same as line |
+| `columns` | small categorical counts | `{ cap, bars: [[label, n], …] }` |
+| `stackedBar` | parts of a whole per group (vaccinations by site) | `{ cap, cats, keys: [3 names], rows: [[a, b, c], …] }` |
+| `donut` | share (occupancy, approvals) | `{ cap, slices: [[name, n], …], center }` |
+| `hbar` | rankings (audit by site) | `{ cap, bars, unit, max?, warnBelow? }` |
+| `gauge` | one percentage vs target (compliance) | `{ cap, value, unit }` |
+| `heatmap` | per-day patterns (feeds) | `{ cap, cells: [7 × weeks], days, weeks, unit }` |
+
+The KPI cards use sparklines (`CHARTS.spark`). Colours are the `--viz-*` tokens in
+`styles.css`. They were checked with the dataviz palette validator for light and dark:
+adjacent pairs pass the colour-blind separation and contrast checks. Stacked bars use the
+order Done, Overdue, Pending; keep that order, because teal next to blue fails.
+
+### Add an image
+1. Put a JPG or WebP (about 800px wide, compressed) in `assets/img/`.
+2. Map it in `config.js` → `images`. Keys are a species name (`'Persian Leopard'`), an animal
+   ID (`'PL-014'`), `'collectionsHero'`, `'announcement:0'` or `'avatar:RS'`.
+3. Add its source, author and licence to `assets/img/CREDITS.md`, with attribution where the
+   licence needs it (CC BY).
+
+Images load lazily, are cropped to fit, carry alt text, and fall back to the grey placeholder
+if the file is missing. Keys without an entry never request a file.
 
 ### Add a module
 Add one entry to `modules` in `config.js`:

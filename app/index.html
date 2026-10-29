@@ -9,6 +9,7 @@
 <meta name="color-scheme" content="light dark">
 <!-- config first (plain data), then apply the saved theme before any CSS paints: no flash of the wrong theme -->
 <script src="config.js"></script>
+<script src="data.js"></script>
 <script>
   (function () {
     var t = null;
@@ -23,7 +24,8 @@
   ANTZ HOME
   index.html  markup only (header, springboard, dock, app window, app screens)
   styles.css  Style 1 tokens + components
-  config.js   all content: user, theme default, modules, stats, home layout, dock, sample data
+  config.js   all content: user, theme default, sites, modules, chart types, home layout, dock, images, sample data
+  data.js     seeded sample-data generator (per-site numbers, 12-week series); loaded before app.js
   app.js      behaviour
   Open this file directly (file://) or serve the folder. See README.md.
 -->
@@ -39,10 +41,15 @@
     <div class="hello">
       <button type="button" class="avatar" id="avatarBtn" data-act="profile" aria-haspopup="menu" aria-label="Profile">RS</button>
       <div class="hello__txt">
-        <p class="hello__sub"><span class="hello__date" id="helloDate"></span><button type="button" class="hello__site" data-act="site" aria-label="Change site"><span id="siteLabel">All sites</span><span class="material-symbols-outlined ico" aria-hidden="true">expand_more</span></button></p>
-        <p class="hello__name" id="helloName">Hello Roshni <span aria-hidden="true">👋</span></p>
+        <p class="hello__sub" id="helloDate"></p>
+        <p class="hello__name" id="helloName">Hello Roshni</p>
       </div>
     </div>
+    <button type="button" class="site-pill" id="sitePill" data-act="site" aria-haspopup="dialog" aria-expanded="false" aria-label="Change site">
+      <span class="material-symbols-outlined site-pill__ic" aria-hidden="true">location_on</span>
+      <span class="site-pill__txt"><span class="site-pill__lbl">Site</span><span class="site-pill__name" id="siteLabel">All sites</span></span>
+      <span class="material-symbols-outlined site-pill__chev" aria-hidden="true">expand_more</span>
+    </button>
     <button type="button" class="hsearch" id="hSearch" data-act="search" aria-label="Search modules, species, animals and notes"><span class="material-symbols-outlined ico" aria-hidden="true">search</span><span class="hsearch__ph" aria-hidden="true">Search “Animals”</span></button>
     <div class="hacts">
       <button type="button" class="pill-btn edit-txt" id="editBtn" data-act="edit">Edit</button>
@@ -116,7 +123,7 @@
             <div class="filters" id="notesFilters">
               <label class="search"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">search</span><span class="vh">Search notes</span><input type="search" id="noteQ" placeholder="Search notes"></label>
               <div class="chips" role="group" aria-label="Note type" id="noteTypes"></div>
-              <label><span class="vh">Sort notes</span><select class="sel" id="noteSort"><option>Newest first</option><option>Oldest first</option><option>A–Z</option></select></label>
+              <label><span class="vh">Sort notes</span><select class="sel" id="noteSort"><option>Newest first</option><option>Oldest first</option><option>A-Z</option></select></label>
               <span class="result-count" id="noteCount" aria-live="polite"></span>
             </div>
             <ul class="cards" id="noteGrid"></ul>
@@ -142,7 +149,7 @@
             <label class="search"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">search</span><span class="vh">Search species</span><input type="search" id="spQ" placeholder="Common or scientific name"></label>
             <div class="chips" role="group" aria-label="Class" id="spClasses"></div>
             <label><span class="vh">Site</span><select class="sel" id="spSite"><option>All sites</option><option>Clearspring</option><option>Crimson Frosted</option><option>Foxglen</option><option>Hollowpine</option></select></label>
-            <label><span class="vh">Sort species</span><select class="sel" id="spSort"><option value="count">Most animals</option><option value="az">A–Z</option></select></label>
+            <label><span class="vh">Sort species</span><select class="sel" id="spSort"><option value="count">Most animals</option><option value="az">A-Z</option></select></label>
             <span class="result-count" id="spCount" aria-live="polite"></span>
           </div>
           <ul class="sp-grid" id="spGrid"></ul>
