@@ -28,7 +28,7 @@ Layout follows the screen width:
 The dashboard scrolls vertically. Every module stays reachable from the sidebar pins, **All
 modules** (the App Library), header search and the dashboard's quick actions.
 
-The home page is the **Command Centre** dashboard: a time-of-day greeting with the active site and a sync
+The home page is the **Command Centre** dashboard: a "Command Centre" heading with the active site and date, a sync
 pill, then panels that are all widgets (move, resize, remove, add back, ⋯ menu, Undo, saved):
 
 | Widget type | What it shows (all from `data.js`, scoped to the active site) |

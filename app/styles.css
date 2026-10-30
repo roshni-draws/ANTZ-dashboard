@@ -1535,3 +1535,50 @@ body, .ui { font-family: var(--font); }
 .att__row--high .att__ic { background: var(--sev-high-chip); color: var(--sev-high); }
 .att__row--critical .att__n, .att__row--pend .att__n { color: var(--sev-critical); }
 .att__row--high .att__n { color: var(--sev-high); }
+
+/* ═════════════════ TASTE CLEANUP (v5) ═════════════════
+   Calmer and more consistent, so the importance colours (coral / amber / blue) are the only loud things.
+   One card radius (16) and one card shadow, one card-title style (600 17px), big numbers light,
+   quiet ⋯ buttons, no uppercase eyebrows, soft image placeholders, status pills tinted rather than neon. */
+:root { --card-title: 600 17px/1.25 var(--font); --r-icon: 10px; }
+.dz .wg { border-radius: var(--s1-r-card); box-shadow: var(--s1-shadow-card); }
+.dz .wg__btn { padding: 18px; }
+/* one card-title style for every dashboard card */
+.dz .wg__hd, .dz .ph-hd__t, .att__ttl b, .hc__t b { font: var(--card-title); color: var(--md-sys-color-on-surface); }
+.dz .wg__hd .gl { width: 26px; height: 26px; border-radius: var(--r-chip-ic); }
+.att__ttl small, .dash-hd__s { font-size: 13px; color: var(--md-sys-color-on-surface-variant); }
+/* big numbers are light, like the quick actions */
+.dz .wg__big { font: 300 34px/1.05 var(--font-num); letter-spacing: -.02em; }
+.hero__v { font-weight: 300; font-size: 44px; }
+/* quiet chrome: ⋯ buttons are plain icons until hovered or focused */
+.dz .wg .more { background: transparent; border: 0; color: var(--md-sys-color-on-surface-variant); }
+.dz .wg .more:hover, .dz .wg .more:focus-visible { background: var(--hover); color: var(--md-sys-color-on-surface); }
+.dz .wg--hero .more, .dz .wg--action.sev--info .more { background: transparent; color: #fff; }
+.dz .wg--hero .more:hover, .dz .wg--action.sev--info .more:hover { background: rgb(255 255 255 / .16); }
+/* the sync status is a line of text, not another card */
+.dash-ok { background: none; box-shadow: none; padding: 4px 0; }
+.dash-hd__t { font: 600 26px/1.2 var(--font); }
+/* one radius set: cards 16, rows and tiles 12, icon chips 10, pills full */
+.att__row, .att__seg, .att__date, .att__none { border-radius: 12px; }
+.att__tab { border-radius: 9px; }
+.att__ic, .qa__hd .qa__ic, .kpi__ic, .hc__ic { border-radius: var(--r-icon); }
+/* status pills: tinted with ink text, the word does the work */
+.st { color: var(--md-sys-color-on-surface); }
+.st--completed { background: color-mix(in srgb, var(--antz-success) 32%, var(--md-sys-color-surface-container-lowest)); }
+.st--pending { background: color-mix(in srgb, var(--antz-alert) 34%, var(--md-sys-color-surface-container-lowest)); }
+.st--overdue { background: color-mix(in srgb, var(--antz-warning) 30%, var(--md-sys-color-surface-container-lowest)); }
+/* no uppercase eyebrows: plain sentence-case section labels */
+.sec-title, .side-list h2, .chat__info h3, .gal-sec, .spot h2, .side__sec h2 { text-transform: none; letter-spacing: 0; font: 600 13px/1.3 var(--font); color: var(--md-sys-color-on-surface-variant); }
+/* image placeholders: a soft tint, not a wireframe cross */
+.ph { background-color: var(--md-sys-color-surface-container); background-image: none; border-color: transparent; }
+.ph--warn { background-color: color-mix(in srgb, var(--antz-warning) 22%, var(--md-sys-color-surface-container)); background-image: none; }
+/* the animal's overdue tile uses the importance colour, not a saturated orange fill */
+.kpi.is-hot { background: var(--sev-critical-bg); border-color: transparent; color: var(--md-sys-color-on-surface); }
+.kpi.is-hot b { color: var(--sev-critical); }
+.kpi.is-hot span { color: var(--md-sys-color-on-surface-variant); }
+/* Need help? in a narrow cell: title, two lines and the button */
+.wg--helpcard.wg--S .hc__ic { display: none; }
+.wg--helpcard.wg--S .hc__t small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 640px) { .dz .wg__btn { padding: 16px; } .dash-hd__t { font-size: 22px; } }
+.wg--helpcard.wg--S .hc__btn { align-self: stretch; justify-content: center; padding: 0 10px; }
+.wg--helpcard.wg--S .hc__btn .material-symbols-outlined { display: none; }

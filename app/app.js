@@ -636,9 +636,10 @@
         deltaChip(d, (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d), d === 0 ? null : d > 0, 'points vs last week') + (on ? '<span class="vh">, showing now</span>' : '') + '</button>';
     }).join('') + '</span>';
   };
-  WIDGETS.team = function (type, size) {
+  WIDGETS.team = function (type, size, it) {
     if (!DATA) return '';
-    var t = DATA.team(S.site), n = size === 'S' ? 2 : size === 'M' ? 3 : 6;
+    /* as many people as the cell shows in full: a main-area M is 2 rows tall, a right-column M is 3 */
+    var t = DATA.team(S.site), n = size === 'S' ? 1 : size === 'M' ? (it && it.ctx === 'side' ? 3 : 2) : 6;
     return panelHd('On duty today', 'users', 'staff in Users') + '<small class="tm__sub">' + fmt(t.onDuty) + ' of ' + fmt(t.staff) + ' staff active</small><span class="tm-list">' + t.people.slice(0, n).map(function (p) {
       return '<span class="tm"><span class="av" aria-hidden="true">' + initials(p.name) + '</span><span class="tm__n"><b>' + esc(p.name) + '</b><small>' + esc(p.shift + ' · ' + p.site) + '</small></span><span class="tag tm__role">' + esc(p.role) + '</span></span>';
     }).join('') + '</span>';
@@ -759,16 +760,15 @@
       '<button type="button" class="rm" data-remove="w:' + it.id + '" aria-label="Remove ' + esc(label) + '">−</button>' +
       '<button type="button" class="rs" data-resize="' + it.id + '" aria-label="Resize ' + esc(label) + ', now ' + SZ_NAME[sz] + '. Drag the corner, or use the arrow keys"></button></div>';
   }
-  function greeting() { var h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
-  /* dashboard heading: greeting, active site + date, sync status; on phones a row of pinned-module chips */
+  /* dashboard heading: title, active site + date, sync status; on phones a row of pinned-module chips */
   function dashHeader() {
     var m = siteMetrics(), n = DATA ? DATA.sites.length : 9;
     var chips = bp() === 'phone' && pinned.length ? '<nav class="pin-chips" aria-label="Pinned modules">' + pinned.map(function (id) {
       var a = app(id); return '<button type="button" class="pin-chip" data-open="' + id + '" ' + tileStyle(a) + '><span class="material-symbols-outlined" aria-hidden="true">' + a.icon + '</span>' + esc(a.name) + '</button>';
     }).join('') + '</nav>' : '';
-    return '<header class="dash-hd"><div class="dash-hd__txt"><h1 id="dashH" class="dash-hd__t">' + greeting() + ', ' + esc(CFG.user.first) + ' <span aria-hidden="true">👋</span></h1>' +
-      '<p class="dash-hd__s">Here’s ' + esc(siteName(S.site)) + ' today · ' + esc(CFG.user.date) + ' · sample data</p></div>' +
-      '<p class="dash-ok"><span class="material-symbols-outlined" aria-hidden="true">verified</span><span><b>' + (S.site === 'all' ? 'All ' + n + ' sites synced' : esc(siteName(S.site)) + ' synced') + '</b><small>Audit score ' + (m ? m.audit : '–') + '% · updated 09:00</small></span></p></header>' + chips;
+    return '<header class="dash-hd"><div class="dash-hd__txt"><h1 id="dashH" class="dash-hd__t">Command Centre</h1>' +
+      '<p class="dash-hd__s">' + esc(siteName(S.site)) + ', ' + esc(CFG.user.date) + '. Sample data.</p></div>' +
+      '<p class="dash-ok"><span class="material-symbols-outlined" aria-hidden="true">verified</span><span><b>' + (S.site === 'all' ? 'All ' + n + ' sites synced' : esc(siteName(S.site)) + ' synced') + '</b><small>Audit score ' + (m ? m.audit + '%' : 'n/a') + ', updated 09:00</small></span></p></header>' + chips;
   }
   /* the home screen is one page: the Command Centre dashboard (main area + right column), scrolling vertically */
   function renderHome() {
