@@ -228,6 +228,25 @@ with nothing saved, desktop starts expanded and tablet collapsed. Phones keep th
 
 Back navigation inside an app is set in `updateAppHeader()` in `app.js`.
 
+### Importance colours
+Dashboard cards are coloured by how urgent they are, always with a word as well as the colour
+("146 overdue", "High priority", "Above threshold", or visually hidden "urgent" / "high priority"):
+
+| Level | Colour | Used for |
+|---|---|---|
+| critical | red tint, red accent, red count | quick actions with anything overdue (vaccinations, deworming), Help Desk with an urgent ticket, Today overdue tasks at or above `overdueCritical` or from a `criticalModules` module, all Today pending tasks (a lighter red, so overdue still reads stronger), the Overdue / Pending counts, KPI change chips that got worse, a KPI past its limit (red top edge) |
+| high | amber tint | quick actions with `pendingHigh` or more pending (Approvals), other Today overdue tasks |
+| info | blue tint | Help Desk with no urgent ticket |
+| normal | module tint | everything else |
+
+The thresholds live in `config.js` → `importance` (`overdueCritical`, `criticalModules`,
+`pendingHigh`, `urgentTickets`, and `kpi` limits such as `overdue: { above: 500 }` or
+`audit: { below: 60 }`). Change a number there to move the line between red and amber. The
+colours are the `--sev-*` tokens in `styles.css` (light in `:root`, dark in the
+`:root[data-theme="dark"]` and `prefers-color-scheme` blocks of the taste pass); each pair is
+noted with its contrast ratio, so keep text at 4.5:1 and icons at 3:1 if you change them.
+Nothing pulses, so reduced motion needs no special case.
+
 ### Change colours
 All colours are custom properties at the top of `styles.css`:
 - `:root` is light mode (Style 1).

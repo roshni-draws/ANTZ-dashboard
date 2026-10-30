@@ -935,10 +935,17 @@ body, .ui { font-family: var(--font); }
   --viz-grid: var(--md-sys-color-outline-variant); --viz-track: var(--md-sys-color-surface-container-high);
   --good-bg: color-mix(in srgb, var(--antz-success) 24%, var(--md-sys-color-surface-container-lowest));
   --bad-bg: color-mix(in srgb, var(--antz-warning) 22%, var(--md-sys-color-surface-container-lowest));
+  /* importance scale (light). Text on these stays the normal ink; the accent is for icons, counts, pills.
+     critical: #C62828 on #FDECEC 4.92:1, white on #C62828 5.62:1, #B71C1C on #F9D4D4 4.82:1
+     high:     #A84300 on #FFF1E0 5.45:1, on #FBDDB8 4.65:1 · info: #1D5FA8 on #E7F1FB 5.65:1, on #CFE3F6 4.91:1 */
+  --sev-critical: #C62828; --sev-critical-text: #B71C1C; --sev-critical-on: #FFFFFF;
+  --sev-critical-bg: #FDECEC; --sev-critical-bg-soft: #FEF5F5; --sev-critical-chip: #F9D4D4;
+  --sev-high: #A84300; --sev-high-bg: #FFF1E0; --sev-high-chip: #FBDDB8;
+  --sev-info: #1D5FA8; --sev-info-bg: #E7F1FB; --sev-info-chip: #CFE3F6;
 }
 /* dark chart palette (validated on #13232B: adjacent CVD ΔE ≥ 13.9, contrast ≥ 3:1) */
-:root[data-theme="dark"] { --viz-1: #14A39B; --viz-2: #E2603A; --viz-3: #4F84D6; --viz-seq-1: #235F5C; --viz-seq-2: #1A857E; --viz-seq-3: #22ABA2; --viz-seq-4: #7AD9D1; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --viz-1: #14A39B; --viz-2: #E2603A; --viz-3: #4F84D6; --viz-seq-1: #235F5C; --viz-seq-2: #1A857E; --viz-seq-3: #22ABA2; --viz-seq-4: #7AD9D1; } }
+:root[data-theme="dark"] { --sev-critical: #FF8A80; --sev-critical-text: #FFB4AB; --sev-critical-on: #3A1D20; --sev-critical-bg: #3A1D20; --sev-critical-bg-soft: #2C1C20; --sev-critical-chip: #4A2226; --sev-high: #FFB870; --sev-high-bg: #3A2A16; --sev-high-chip: #4A3418; --sev-info: #8CC4FF; --sev-info-bg: #14293C; --sev-info-chip: #1C3850; --viz-1: #14A39B; --viz-2: #E2603A; --viz-3: #4F84D6; --viz-seq-1: #235F5C; --viz-seq-2: #1A857E; --viz-seq-3: #22ABA2; --viz-seq-4: #7AD9D1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sev-critical: #FF8A80; --sev-critical-text: #FFB4AB; --sev-critical-on: #3A1D20; --sev-critical-bg: #3A1D20; --sev-critical-bg-soft: #2C1C20; --sev-critical-chip: #4A2226; --sev-high: #FFB870; --sev-high-bg: #3A2A16; --sev-high-chip: #4A3418; --sev-info: #8CC4FF; --sev-info-bg: #14293C; --sev-info-chip: #1C3850; --viz-1: #14A39B; --viz-2: #E2603A; --viz-3: #4F84D6; --viz-seq-1: #235F5C; --viz-seq-2: #1A857E; --viz-seq-3: #22ABA2; --viz-seq-4: #7AD9D1; } }
 
 /* widgets: one rhythm */
 .wg__btn { padding: var(--sp-4); gap: var(--sp-2); }
@@ -979,7 +986,8 @@ body, .ui { font-family: var(--font); }
   color: var(--md-sys-color-on-surface); background: var(--md-sys-color-surface-container); white-space: nowrap; max-width: 100%; overflow: hidden; }
 .kpi__d .material-symbols-outlined { font-size: 15px; }
 .kpi__d--good { background: var(--good-bg); }
-.kpi__d--bad { background: var(--bad-bg); }
+.kpi__d--bad { background: var(--sev-critical-bg); }
+.kpi__d--bad .material-symbols-outlined { color: var(--sev-critical); }
 .kpi__vs { font-weight: 400; color: var(--md-sys-color-on-surface-variant); margin-left: 3px; overflow: hidden; text-overflow: ellipsis; }
 
 /* Needs attention */
@@ -1393,6 +1401,7 @@ body, .ui { font-family: var(--font); }
 .hc { display: flex; gap: 12px; align-items: flex-start; }
 .hc__ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); }
 .hc__t b { display: block; font-size: 15px; }
+.dz--main > .wg--helpcard.wg--S .hc__t { padding-right: 24px; }
 .hc__btn { align-self: flex-start; }
 
 /* phone-only row of pinned modules at the top of the dashboard */
@@ -1461,8 +1470,6 @@ body, .ui { font-family: var(--font); }
 .att__ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--md-sys-color-surface-container-lowest);
   color: color-mix(in srgb, var(--f) 72%, #000); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-sys-color-outline-variant) 60%, transparent); }
 .att__ic .material-symbols-outlined { font-size: 22px; font-variation-settings: 'FILL' 1; }
-:root[data-theme="dark"] .att__ic { color: color-mix(in srgb, var(--f) 70%, #fff); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .att__ic { color: color-mix(in srgb, var(--f) 70%, #fff); } }
 .att__lbl { min-width: 0; }
 .att__lbl b { display: block; font-size: 14px; font-weight: 600; color: var(--md-sys-color-on-surface); }
 .att__lbl small { display: block; margin-top: 1px; font-size: 12px; color: var(--md-sys-color-on-surface-variant); }
@@ -1476,3 +1483,36 @@ body, .ui { font-family: var(--font); }
 .gprev__dash .material-symbols-outlined { font-size: 40px; }
 .gprev__dash--hero { background: linear-gradient(135deg, #12554C, #082B28); color: #fff; }
 .side[inert] { opacity: .6; }
+
+/* ═════════════════ IMPORTANCE COLOURS ═════════════════
+   sev--critical (red) · sev--high (amber) · sev--info (blue) · sev--normal (module tint). Always paired with a word
+   (pill or visually hidden text), never colour alone. Tokens: --sev-* at the top of the taste pass. */
+.sev-pill { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 999px; font: 700 11px/1 var(--font); white-space: nowrap;
+  background: var(--sev-critical); color: var(--sev-critical-on); }
+.qa__row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding-right: 22px; }
+.dz .wg--action.sev--critical, .wg--action.sev--critical { background: var(--sev-critical-bg); box-shadow: inset 4px 0 0 var(--sev-critical), 0 1px 2px rgb(var(--md-sys-color-shadow-rgb) / .05), 0 12px 30px -20px rgb(var(--md-sys-color-shadow-rgb) / .35); }
+.wg--action.sev--critical .qa__ic { background: var(--sev-critical-chip); color: var(--sev-critical-text); }
+.wg--action.sev--critical .qa__n { color: var(--sev-critical); }
+.dz .wg--action.sev--high, .wg--action.sev--high { background: var(--sev-high-bg); box-shadow: inset 4px 0 0 var(--sev-high), 0 1px 2px rgb(var(--md-sys-color-shadow-rgb) / .05), 0 12px 30px -20px rgb(var(--md-sys-color-shadow-rgb) / .35); }
+.wg--action.sev--high .qa__ic { background: var(--sev-high-chip); color: var(--sev-high); }
+.wg--action.sev--high .qa__n { color: var(--sev-high); }
+.wg--action.sev--high .sev-pill { background: var(--sev-high-chip); color: var(--sev-high); }
+.dz .wg--action.sev--info, .wg--action.sev--info { background: var(--sev-info-bg); }
+.wg--action.sev--info .qa__ic { background: var(--sev-info-chip); color: var(--sev-info); }
+/* KPI past its limit: thin red top edge + "Above threshold" */
+.dz .wg--kpi.sev--critical { box-shadow: inset 0 3px 0 var(--sev-critical), 0 1px 2px rgb(var(--md-sys-color-shadow-rgb) / .05), 0 12px 30px -20px rgb(var(--md-sys-color-shadow-rgb) / .35); }
+.kpi__top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding-right: 30px; }
+.kpi__top .kpi__ic { flex: none; }
+/* Today card: overdue red (critical) or amber (high); pending red on a lighter tint */
+.att__row--critical { background: var(--sev-critical-bg); box-shadow: inset 4px 0 0 var(--sev-critical); }
+.att__row--high { background: var(--sev-high-bg); box-shadow: inset 4px 0 0 var(--sev-high); }
+.att__row--pend { background: var(--sev-critical-bg-soft); box-shadow: inset 0 0 0 1px var(--sev-critical-chip); }
+.att__row--critical:hover, .att__row--pend:hover { background: color-mix(in srgb, var(--sev-critical) 12%, var(--sev-critical-bg)); }
+.att__row--high:hover { background: color-mix(in srgb, var(--sev-high) 10%, var(--sev-high-bg)); }
+.att__row--critical .att__ic { background: var(--sev-critical-chip); color: var(--sev-critical-text); box-shadow: none; }
+.att__row--high .att__ic { background: var(--sev-high-chip); color: var(--sev-high); box-shadow: none; }
+.att__row--pend .att__ic { color: var(--sev-critical-text); }
+.att__row--critical .att__n, .att__row--pend .att__n { color: var(--sev-critical); }
+.att__row--high .att__n { color: var(--sev-high); }
+.att__cnt { background: var(--sev-critical-chip); color: var(--sev-critical-text); }
+.att__tab.is-on .att__cnt { background: var(--sev-critical); color: var(--sev-critical-on); }

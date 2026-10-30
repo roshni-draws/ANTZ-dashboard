@@ -146,26 +146,40 @@ window.ANTZ_CONFIG = {
              Older configs with home.pages (a list of pages) still work: page 1 is used. */
   home: {
     maxPins: 10,
-    pins: ['collections', 'medical', 'administer', 'communication', 'focus', 'help'],
+    pins: ['animals', 'collections', 'communication', 'notes', 'focus', 'audit'],
     layout: [
       { widget: 'hero', size: 'W', id: 'hero' },
-      { widget: 'kpi', metric: 'health', size: 'S', id: 'kpi-health' },
-      { widget: 'kpi', metric: 'overdue', size: 'S', id: 'kpi-overdue' },
-      { widget: 'kpi', metric: 'mortality', size: 'S', id: 'kpi-mortality' },
-      { widget: 'kpi', metric: 'audit', size: 'S', id: 'kpi-audit' },
-      { widget: 'trend', metric: 'health', period: 12, size: 'XL', id: 'trend' },
+      { widget: 'attention', size: 'L', id: 'attention' },
       { widget: 'action', preset: 'vacc', size: 'S', id: 'qa-vacc' },
       { widget: 'action', preset: 'deworm', size: 'S', id: 'qa-deworm' },
       { widget: 'action', preset: 'approvals', size: 'S', id: 'qa-approvals' },
       { widget: 'action', preset: 'help', size: 'S', id: 'qa-help' },
-      { widget: 'activity', size: 'XL', id: 'activity' },
-      { widget: 'planning', size: 'L', id: 'planning' },
-      { widget: 'attention', size: 'L', id: 'attention' },
+      { widget: 'diet', size: 'L', id: 'diet' },
+      { widget: 'item', ref: { type: 'species', id: 'African Wild Dog' }, size: 'L', id: 'species-wild-dog' },
+      { widget: 'helpcard', size: 'S', id: 'helpcard' },
+      { widget: 'team', size: 'M', id: 'team' },
+      { widget: 'tags', size: 'S', id: 'tags' },
       { stack: 'Featured', size: 'L', id: 'featured', zone: 'side', items: [{ type: 'item', ref: { type: 'animal', id: 'PL-014' } }, 'announcements'] },
-      { widget: 'sites', size: 'L', id: 'sites', zone: 'side' },
-      { widget: 'team', size: 'M', id: 'team', zone: 'side' },
-      { widget: 'helpcard', size: 'S', id: 'helpcard', zone: 'side' }
+      { widget: 'activity', size: 'L', id: 'activity', zone: 'side' }
     ]
+  },
+
+  /* ── Importance colours: when dashboard cards turn red (critical), amber (high) or blue (info).
+     Colours are the --sev-* tokens in styles.css; these numbers decide which one a card gets.
+       overdueCritical   Today card, Overdue tab: a task with at least this many overdue is red; fewer is amber
+       criticalModules   Today card: overdue tasks from these modules are always red (health first)
+       pendingHigh       quick actions: with nothing overdue, at least this many pending is amber
+       urgentTickets     Help Desk quick action is red when an open ticket has one of these priorities; else blue
+       kpi               KPI cards: past the limit, the card gets a red top edge and "Above threshold"
+                         ({ above: n } or { below: n }, checked against the KPI's value for the active site)
+     Quick actions with anything overdue are always red. Pending tasks on the Today card are red too
+     (a lighter tint than overdue). ── */
+  importance: {
+    overdueCritical: 100,
+    criticalModules: ['medical'],
+    pendingHigh: 10,
+    urgentTickets: ['Urgent'],
+    kpi: { overdue: { above: 500 }, mortality: { above: 300 }, health: { above: 250 }, audit: { below: 60 } }
   },
 
   /* ── Notification Center: grouped per module; items are [title, body, time ago] ── */

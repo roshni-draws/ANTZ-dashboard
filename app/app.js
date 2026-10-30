@@ -105,9 +105,30 @@
     helpcard: { name: 'Need help?', def: 'S', open: 'help', desc: 'A shortcut to the Help Desk.' }
   };
   /* quick-action cards: module, pale tint from the module colour, count from data.js for the active site */
+  /* importance (config.importance): critical = red, high = amber, info = blue, normal = module tint */
+  var IMP = Object.assign({ overdueCritical: 100, criticalModules: ['medical'], pendingHigh: 10, urgentTickets: ['Urgent'], kpi: {} }, CFG.importance || {});
+  var SEV_SR = { critical: 'urgent', high: 'high priority', info: '', normal: '' };
+  /* a quick action's importance: red if anything is overdue (or, for Help Desk, an urgent open ticket),
+     amber if the pending count reaches pendingHigh, Help Desk otherwise blue. flag = the visible word for it. */
+  function actionSev(ac, m) {
+    if (ac.module === 'help') {
+      var urgent = TICKETS.filter(function (t) { return t[4] !== 'Resolved' && IMP.urgentTickets.indexOf(t[3]) > -1; }).length;
+      return urgent ? { sev: 'critical', flag: urgent + ' urgent' } : { sev: 'info', flag: '' };
+    }
+    var over = ac.over ? ac.over(m) : 0;
+    if (over > 0) return { sev: 'critical', flag: fmt(over) + ' overdue' };
+    if (ac.n(m) >= IMP.pendingHigh) return { sev: 'high', flag: 'High priority' };
+    return { sev: 'normal', flag: '' };
+  }
+  /* a KPI past its config.importance.kpi limit */
+  function kpiCritical(metric) {
+    var lim = IMP.kpi[metric], k = DATA && DATA.kpi(metric, S.site); if (!lim || !k) return false;
+    var v = parseFloat(String(k.value).replace(/[^0-9.\-]/g, ''));
+    return (lim.above != null && v > lim.above) || (lim.below != null && v < lim.below);
+  }
   var ACTIONS = {
-    vacc: { module: 'administer', title: 'Pending vaccinations', icon: 'vaccines', n: function (m) { return m.vacc.pending; }, d: function (m) { return fmt(m.vacc.overdue) + ' overdue, the rest due this week'; } },
-    deworm: { module: 'administer', title: 'Pending deworming', icon: 'medication', n: function (m) { return m.deworm.pending; }, d: function (m) { return fmt(m.deworm.overdue) + ' overdue, the rest due this week'; } },
+    vacc: { module: 'administer', title: 'Pending vaccinations', icon: 'vaccines', over: function (m) { return m.vacc.overdue; }, n: function (m) { return m.vacc.pending; }, d: function (m) { return m.vacc.overdue ? 'Rest due this week' : 'Due this week'; } },
+    deworm: { module: 'administer', title: 'Pending deworming', icon: 'medication', over: function (m) { return m.deworm.overdue; }, n: function (m) { return m.deworm.pending; }, d: function (m) { return m.deworm.overdue ? 'Rest due this week' : 'Due this week'; } },
     approvals: { module: 'approvals', title: 'Approvals', icon: 'task_alt', n: function (m) { return m.pending.approvals; }, d: function () { return 'transfer requests waiting'; } },
     help: { module: 'help', title: 'Help Desk', icon: 'support_agent', n: function () { return TICKETS.filter(function (t) { return t[4] === 'Open'; }).length; }, d: function () { return 'open tickets. Raise a new one.'; } },
     lab: { module: 'lab', title: 'Lab results', icon: 'biotech', n: function (m) { return m.pending.lab; }, d: function (m) { return fmt(m.lab.flagged) + ' flagged for review'; } },
@@ -470,19 +491,21 @@
       var dm = /(\d{1,2})\s+([A-Za-z]{3})/.exec(CFG.user.date || '') || [0, new Date().getDate(), new Date().toLocaleString('en', { month: 'short' })];
       var head = '<span class="att__hd"><span class="att__ttl"><b>Today</b><small>What needs doing</small></span>' +
         '<span class="att__date" aria-label="' + esc(dm[1] + ' ' + dm[2]) + '"><span aria-hidden="true">' + esc(dm[2].toUpperCase()) + '</span><b aria-hidden="true">' + esc(dm[1]) + '</b></span></span>';
-      var card = function (r) {
-        var a = app(r[2]);
-        return '<button type="button" class="att__row" data-open="' + r[2] + '"><span class="att__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span>' +
+      /* importance: overdue tasks are red at overdueCritical or from a critical module, else amber;
+         pending tasks are red too, on a lighter tint, so overdue still reads as the stronger */
+      var card = function (r, kind) {
+        var a = app(r[2]), sev = kind === 'pend' ? 'pend' : (r[1] >= IMP.overdueCritical || IMP.criticalModules.indexOf(r[2]) > -1) ? 'critical' : 'high';
+        return '<button type="button" class="att__row att__row--' + sev + '" data-open="' + r[2] + '"><span class="att__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span>' +
           '<span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + '</small></span><span class="att__n">' + fmt(r[1]) + '</span>' +
-          '<span class="vh">, ' + (tab === 'over' ? 'overdue' : 'pending') + '</span></button>';
+          '<span class="vh">, ' + (kind === 'pend' ? 'pending, high priority' : 'overdue, ' + SEV_SR[sev]) + '</span></button>';
       };
-      if (size === 'S') return head + '<span class="att__sum"><span class="wg__big">' + fmt(at.total) + '</span><span class="wg__lbl">overdue tasks</span></span>' + (at.overdue[0] ? card(at.overdue[0]) : '');
+      if (size === 'S') return head + '<span class="att__sum"><span class="wg__big">' + fmt(at.total) + '</span><span class="wg__lbl">overdue tasks</span></span>' + (at.overdue[0] ? card(at.overdue[0], 'over') : '');
       var seg = function (k, label, n) {
         return '<button type="button" class="att__tab' + (tab === k ? ' is-on' : '') + '" data-act="attTab" data-w="' + esc(it.id || '') + '" data-tab="' + k + '" aria-pressed="' + (tab === k) + '">' + label + '<span class="att__cnt">' + n + '</span></button>';
       };
       var rows = tab === 'over' ? at.overdue : at.pending;
       return head + '<span class="att__seg" role="group" aria-label="Show tasks">' + seg('over', 'Overdue', at.overdue.length) + seg('pend', 'Pending', at.pending.length) + '</span>' +
-        '<span class="att">' + (rows.length ? rows.slice(0, size === 'M' ? 2 : rows.length).map(card).join('') : '<span class="att__none">Nothing ' + (tab === 'over' ? 'overdue' : 'pending') + '. Nice work.</span>') + '</span>';
+        '<span class="att">' + (rows.length ? rows.slice(0, size === 'M' ? 2 : rows.length).map(function (r) { return card(r, tab); }).join('') : '<span class="att__none">Nothing ' + (tab === 'over' ? 'overdue' : 'pending') + '. Nice work.</span>') + '</span>';
     }
   };
   /* ================= COMMAND CENTRE WIDGETS =================
@@ -514,7 +537,7 @@
   WIDGETS.kpi = function (type, size, it) {
     var k = DATA && DATA.kpi(it.metric, S.site); if (!k) return '';
     var a = app(k.module);
-    return '<span class="kpi__top"><span class="kpi__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span></span><span class="kpi__l">' + esc(k.label) + '</span>' +
+    return '<span class="kpi__top"><span class="kpi__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span>' + (kpiCritical(it.metric) ? '<span class="sev-pill">Above threshold</span>' : '') + '</span><span class="kpi__l">' + esc(k.label) + '</span>' +
       '<span class="kpi__row"><span class="kpi__v">' + esc(k.value) + '</span>' + deltaChip(k.delta.value, k.deltaText, k.good) + '</span>' +
       (size === 'S' ? '' : CHARTS.spark({ series: k.series }));
   };
@@ -565,9 +588,10 @@
   }
   WIDGETS.action = function (type, size, it) {
     var ac = ACTIONS[it.preset], m = siteMetrics(); if (!ac || !m) return '';
-    var a = app(ac.module);
+    var a = app(ac.module), sv = actionSev(ac, m);
     return '<span class="qa__ic" ' + tileStyle(a) + '><span class="material-symbols-outlined" aria-hidden="true">' + ac.icon + '</span></span>' +
-      '<span class="qa__t">' + esc(ac.title) + '</span><span class="qa__n">' + fmt(ac.n(m)) + '</span><span class="qa__d">' + esc(ac.d(m)) + '</span>' +
+      '<span class="qa__t">' + esc(ac.title) + '</span><span class="qa__row"><span class="qa__n">' + fmt(ac.n(m)) + '</span>' +
+      (sv.flag ? '<span class="sev-pill">' + esc(sv.flag) + '</span>' : '') + '</span><span class="qa__d">' + esc(ac.d(m)) + '</span>' +
       '<span class="qa__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>';
   };
   /* status pills use the ANTZ status fills with black text, plus the word itself */
@@ -726,9 +750,10 @@
     /* panels with their own buttons, links or filters are a plain container; the rest are one big button */
     var body = dash && type !== 'kpi' && type !== 'action'
       ? '<div class="wg__btn wg__body">' + widgetBody(type, bodySize, opts) + '</div>'
-      : '<button type="button" class="wg__btn" ' + target + '>' + widgetBody(type, bodySize, opts) + '<span class="vh">, open ' + esc(dash ? app(dashOpen(it)).name : name) + (stack ? '. ' + esc(it.name) + ' stack, ' + (it.idx + 1) + ' of ' + it.items.length : '') + '</span></button>';
+      : '<button type="button" class="wg__btn" ' + target + '>' + widgetBody(type, bodySize, opts) + '<span class="vh">' + (sevCls === ' sev--critical' ? ', urgent' : sevCls === ' sev--high' ? ', high priority' : '') + ', open ' + esc(dash ? app(dashOpen(it)).name : name) + (stack ? '. ' + esc(it.name) + ' stack, ' + (it.idx + 1) + ' of ' + it.items.length : '') + '</span></button>';
     var tint = type === 'action' && ACTIONS[it.preset] ? ' style="--f:' + app(ACTIONS[it.preset].module).colour + '"' : '';
-    return '<div class="wg wg--' + sz + (stack ? ' wg--stack' : '') + (type === 'item' ? ' wg--item' : '') + statsCls + '" data-cell="w:' + it.id + '"' + tint + '>' +
+    var sevCls = type === 'action' && ACTIONS[it.preset] && siteMetrics() ? ' sev--' + actionSev(ACTIONS[it.preset], siteMetrics()).sev : type === 'kpi' && kpiCritical(it.metric) ? ' sev--critical' : '';
+    return '<div class="wg wg--' + sz + (stack ? ' wg--stack' : '') + (type === 'item' ? ' wg--item' : '') + statsCls + sevCls + '" data-cell="w:' + it.id + '"' + tint + '>' +
       body + dots +
       '<button type="button" class="more" data-more="w:' + it.id + '" aria-haspopup="menu" aria-label="More options for ' + esc(label) + '">' + icon('more') + '</button>' +
       '<button type="button" class="rm" data-remove="w:' + it.id + '" aria-label="Remove ' + esc(label) + '">−</button>' +
