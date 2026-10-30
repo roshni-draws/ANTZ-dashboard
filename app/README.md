@@ -230,13 +230,15 @@ Back navigation inside an app is set in `updateAppHeader()` in `app.js`.
 
 ### Importance colours
 Dashboard cards are coloured by how urgent they are, always with a word as well as the colour
-("146 overdue", "High priority", "Above threshold", or visually hidden "urgent" / "high priority"):
+("146 overdue", "High priority", "Above threshold", "· overdue" under each Today task, or visually
+hidden "urgent" / "high priority"). Cards and rows are tinted whole; there are no accent lines.
+Big numbers on quick actions are light 40px, titles 600 15px, notes 12–13px:
 
 | Level | Colour | Used for |
 |---|---|---|
-| critical | red tint, red accent, red count | quick actions with anything overdue (vaccinations, deworming), Help Desk with an urgent ticket, Today overdue tasks at or above `overdueCritical` or from a `criticalModules` module, all Today pending tasks (a lighter red, so overdue still reads stronger), the Overdue / Pending counts, KPI change chips that got worse, a KPI past its limit (red top edge) |
-| high | amber tint | quick actions with `pendingHigh` or more pending (Approvals), other Today overdue tasks |
-| info | blue tint | Help Desk with no urgent ticket |
+| critical | warm coral: peach card or row, coral count, white icon tile | quick actions with anything overdue (vaccinations, deworming), Help Desk with an urgent ticket, Today overdue tasks at or above `overdueCritical` or from a `criticalModules` module, all Today pending tasks (a lighter red, so overdue still reads stronger), the selected Overdue / Pending count, KPI change chips that got worse, a KPI past its limit (the card turns peach, plus "Above threshold") |
+| high | amber card or row, amber count | quick actions with `pendingHigh` or more pending (Approvals), other Today overdue tasks |
+| info | blue gradient card, white text | Help Desk with no urgent ticket |
 | normal | module tint | everything else |
 
 The thresholds live in `config.js` → `importance` (`overdueCritical`, `criticalModules`,

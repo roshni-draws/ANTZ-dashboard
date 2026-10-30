@@ -130,7 +130,7 @@
     vacc: { module: 'administer', title: 'Pending vaccinations', icon: 'vaccines', over: function (m) { return m.vacc.overdue; }, n: function (m) { return m.vacc.pending; }, d: function (m) { return m.vacc.overdue ? 'Rest due this week' : 'Due this week'; } },
     deworm: { module: 'administer', title: 'Pending deworming', icon: 'medication', over: function (m) { return m.deworm.overdue; }, n: function (m) { return m.deworm.pending; }, d: function (m) { return m.deworm.overdue ? 'Rest due this week' : 'Due this week'; } },
     approvals: { module: 'approvals', title: 'Approvals', icon: 'task_alt', n: function (m) { return m.pending.approvals; }, d: function () { return 'transfer requests waiting'; } },
-    help: { module: 'help', title: 'Help Desk', icon: 'support_agent', n: function () { return TICKETS.filter(function (t) { return t[4] === 'Open'; }).length; }, d: function () { return 'open tickets. Raise a new one.'; } },
+    help: { module: 'help', title: 'Help Desk', icon: 'support_agent', n: function () { return TICKETS.filter(function (t) { return t[4] === 'Open'; }).length; }, d: function () { return 'Open tickets'; } },
     lab: { module: 'lab', title: 'Lab results', icon: 'biotech', n: function (m) { return m.pending.lab; }, d: function (m) { return fmt(m.lab.flagged) + ' flagged for review'; } },
     necropsy: { module: 'necropsy', title: 'Necropsy reports', icon: 'labs', n: function (m) { return m.pending.necropsy; }, d: function (m) { return fmt(m.necropsy.drafts) + ' in draft'; } }
   };
@@ -496,8 +496,8 @@
       var card = function (r, kind) {
         var a = app(r[2]), sev = kind === 'pend' ? 'pend' : (r[1] >= IMP.overdueCritical || IMP.criticalModules.indexOf(r[2]) > -1) ? 'critical' : 'high';
         return '<button type="button" class="att__row att__row--' + sev + '" data-open="' + r[2] + '"><span class="att__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span>' +
-          '<span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + '</small></span><span class="att__n">' + fmt(r[1]) + '</span>' +
-          '<span class="vh">, ' + (kind === 'pend' ? 'pending, high priority' : 'overdue, ' + SEV_SR[sev]) + '</span></button>';
+          '<span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + ' · ' + (kind === 'pend' ? 'pending' : 'overdue') + '</small></span><span class="att__n">' + fmt(r[1]) + '</span>' +
+          '<span class="vh">, ' + (kind === 'pend' ? 'high priority' : SEV_SR[sev]) + '</span></button>';
       };
       if (size === 'S') return head + '<span class="att__sum"><span class="wg__big">' + fmt(at.total) + '</span><span class="wg__lbl">overdue tasks</span></span>' + (at.overdue[0] ? card(at.overdue[0], 'over') : '');
       var seg = function (k, label, n) {
@@ -589,9 +589,9 @@
   WIDGETS.action = function (type, size, it) {
     var ac = ACTIONS[it.preset], m = siteMetrics(); if (!ac || !m) return '';
     var a = app(ac.module), sv = actionSev(ac, m);
-    return '<span class="qa__ic" ' + tileStyle(a) + '><span class="material-symbols-outlined" aria-hidden="true">' + ac.icon + '</span></span>' +
-      '<span class="qa__t">' + esc(ac.title) + '</span><span class="qa__row"><span class="qa__n">' + fmt(ac.n(m)) + '</span>' +
-      (sv.flag ? '<span class="sev-pill">' + esc(sv.flag) + '</span>' : '') + '</span><span class="qa__d">' + esc(ac.d(m)) + '</span>' +
+    return '<span class="qa__hd"><span class="qa__ic" ' + tileStyle(a) + '><span class="material-symbols-outlined" aria-hidden="true">' + ac.icon + '</span></span>' +
+      '<span class="qa__t">' + esc(ac.title) + '</span></span><span class="qa__n">' + fmt(ac.n(m)) + '</span>' +
+      '<span class="qa__foot">' + (sv.flag ? '<span class="sev-pill">' + esc(sv.flag) + '</span><span class="vh">, ' + esc(ac.d(m)) + '</span>' : '<span class="qa__d">' + esc(ac.d(m)) + '</span>') + '</span>' +
       '<span class="qa__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>';
   };
   /* status pills use the ANTZ status fills with black text, plus the word itself */
