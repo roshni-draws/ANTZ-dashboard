@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
 <title>ANTZ</title>
 <meta name="theme-color" content="#F2FBF8">
 <meta name="color-scheme" content="light dark">
@@ -22,9 +23,9 @@
 </script>
 <!--
   ANTZ HOME
-  index.html  markup only (header, springboard, dock, app window, app screens)
+  index.html  markup only (sidebar, header, springboard, app window, app screens)
   styles.css  Style 1 tokens + components
-  config.js   all content: user, theme default, sites, modules, chart types, home layout, dock, images, sample data
+  config.js   all content: user, theme default, sites, modules, chart types, home layout, pins, images, sample data
   data.js     seeded sample-data generator (per-site numbers, 12-week series); loaded before app.js
   app.js      behaviour
   Open this file directly (file://) or serve the folder. See README.md.
@@ -35,10 +36,39 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="shell" id="shell">
+  <!-- ===== SIDEBAR: Command Centre, home pages, pinned modules, App Library, help =====
+       desktop: fixed 240px; tablet: 72px icon rail that expands; phone: drawer from the header menu button -->
+  <nav class="side" id="side" aria-label="Main">
+    <div class="side__top">
+      <span class="side__brand"><span class="side__logo" aria-hidden="true"><span class="material-symbols-outlined">pets</span></span><span class="side__word">ANTZ</span></span>
+      <button type="button" class="side__toggle" id="sideToggle" data-act="sideToggle" aria-expanded="false" aria-controls="side" aria-label="Expand sidebar"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">left_panel_open</span></button>
+      <button type="button" class="side__close" id="sideClose" data-act="drawerClose" aria-label="Close menu"><span class="material-symbols-outlined ico" aria-hidden="true">close</span></button>
+    </div>
+    <div class="side__scroll">
+      <ul class="side__list" id="snHome"></ul>
+      <div class="side__sec"><h2 id="snPinsH">Pinned</h2><span class="side__count" id="snPinsN"></span></div>
+      <ul class="side__list side__pins" id="snPins" aria-labelledby="snPinsH"></ul>
+      <button type="button" class="side__add sn" data-act="pinPicker" data-label="Pin a module"><span class="sn__ic"><span class="material-symbols-outlined" aria-hidden="true">add</span></span><span class="sn__lbl">Pin a module</span></button>
+    </div>
+    <div class="side__foot">
+      <ul class="side__list">
+        <li><button type="button" class="sn" data-open="help" data-label="Help Desk"><span class="sn__ic"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span></span><span class="sn__lbl">Help Desk</span></button></li>
+        <li><button type="button" class="sn" data-act="profile" data-label="Settings and appearance" aria-haspopup="menu"><span class="sn__ic"><span class="material-symbols-outlined" aria-hidden="true">settings</span></span><span class="sn__lbl">Settings</span></button></li>
+      </ul>
+      <div class="side__card">
+        <b>Found a bug?</b>
+        <p>Tell the Help Desk and we will look at it today.</p>
+        <button type="button" class="btn btn--primary btn--sm" data-act="reportBug"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">bug_report</span>Report it</button>
+      </div>
+    </div>
+  </nav>
+  <div class="side-scrim" id="sideScrim" data-act="drawerClose" hidden></div>
 <div class="ui" id="ui">
   <!-- ===== FIXED HEADER: greeting, search, edit, scan, notifications ===== -->
   <header class="status topbar" id="statusBar">
     <div class="hello">
+      <button type="button" class="round-btn menu-btn" id="menuBtn" data-act="drawer" aria-controls="side" aria-expanded="false" aria-label="Open menu, pinned modules"><span class="material-symbols-outlined ico" aria-hidden="true">menu</span></button>
       <button type="button" class="avatar" id="avatarBtn" data-act="profile" aria-haspopup="menu" aria-label="Profile">RS</button>
       <div class="hello__txt">
         <p class="hello__sub" id="helloDate"></p>
@@ -86,23 +116,16 @@
       <button type="button" class="edge edge--l" id="edgeL" data-act="nc" aria-label="Open Notification Center"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">chevron_right</span></button>
       <button type="button" class="edge edge--r" id="edgeR" data-act="library" aria-label="Open App Library"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">chevron_left</span></button>
     </div>
-    <div class="sb-ctl">
-      <div class="pagectl" id="pageCtl" role="group" aria-label="Home screen pages">
-        <button type="button" class="arrow" data-act="prevPage" aria-label="Previous page"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">chevron_left</span></button>
-        <div class="pdots" id="pdots"></div>
-        <button type="button" class="arrow" data-act="nextPage" aria-label="Next page"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">chevron_right</span></button>
-      </div>
-    </div>
-    <div class="dock-wrap"><nav class="dock" id="dock" aria-label="Dock, pinned modules"></nav></div>
   </div>
 
   <!-- APP WINDOW (a launched module) -->
   <section class="appwin" id="appwin" aria-labelledby="appTitle" hidden>
     <header class="app-hd">
+      <button type="button" class="app-home" id="appHome" data-act="home" aria-label="Back to Command Centre"><span class="material-symbols-outlined ico" aria-hidden="true">arrow_back</span><span class="app-home__lbl">Dashboard</span></button>
       <button type="button" class="app-back" id="appBack" data-act="appBack" hidden><span class="material-symbols-outlined ico" aria-hidden="true">arrow_back</span><span>Back</span></button>
       <span class="app__ic" id="appIc" aria-hidden="true"></span>
       <h1 id="appTitle" tabindex="-1">App</h1>
-      <button type="button" class="btn btn--ghost btn--sm pin-toggle" id="appPin" data-pin="" aria-pressed="false"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">push_pin</span><span class="lbl-long">Keep in Dock</span><span class="vh">Keep in Dock</span></button>
+      <button type="button" class="btn btn--ghost btn--sm pin-toggle" id="appPin" data-pin="" aria-pressed="false"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">push_pin</span><span class="lbl-long">Pin to sidebar</span><span class="vh">, pinned to the sidebar</span></button>
       <button type="button" class="icon-btn" id="appMore" data-more="" aria-label="More options" aria-haspopup="menu"><span class="material-symbols-outlined ico" aria-hidden="true">more_horiz</span></button>
     </header>
     <div class="app-body" id="appBody">
@@ -369,7 +392,6 @@
         <p class="muted" style="margin-top:14px">This module’s own screens are outside this wireframe, so it lands on its Large stats view. It launches and closes like every other app.</p>
       </section>
     </div>
-    <button type="button" class="home-ind" id="homeInd" data-act="home" aria-label="Home, close the app"><span aria-hidden="true"></span></button>
   </section>
 
   <!-- overlays are rendered here -->
@@ -377,6 +399,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="toastAct" hidden></button></div>
 </div>
 
+</div>
 <script src="app.js"></script>
 </body>
 </html>

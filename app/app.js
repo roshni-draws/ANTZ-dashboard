@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════
    ANTZ HOME · APP
-   Everything that moves: springboard pages, dock + pins, edit mode with
+   Everything that moves: sidebar + pins, Command Centre dashboard, springboard pages, edit mode with
    drag-to-resize, widget stacks, widget gallery, App Library, search,
    Notification Center, launching apps, and the six built app screens.
    All content comes from window.ANTZ_CONFIG (config.js).
@@ -54,9 +54,11 @@
   function counts() { var l = 0, b = 0, a = 0; Object.keys(SAVE).forEach(function (k) { var s = SAVE[k]; if (s.liked) l++; if (s.bm) b++; if (s.liked || s.bm) a++; }); return { liked: l, bm: b, all: a }; }
 
   /* ================= HOME STATE ================= */
-  var PIN_KEY = 'antz-pins', LAYOUT_KEY = 'antz-layout-v2', SITE_KEY = 'antz-site', HINT_KEY = 'antz-site-hint';
-  var MAX_PINS = CFG.home.maxPins || 8;
-  var pinned = (recall(PIN_KEY) || CFG.home.dock).filter(app).slice(0, MAX_PINS);
+  /* layout v3: page 1 became the Command Centre dashboard (main area + right column); older saved layouts are ignored */
+  var PIN_KEY = 'antz-pins', LAYOUT_KEY = 'antz-layout-v3', SITE_KEY = 'antz-site', HINT_KEY = 'antz-site-hint', SIDE_KEY = 'antz-side';
+  var MAX_PINS = CFG.home.maxPins || 10;
+  /* pins live in the sidebar; config.home.pins (older configs: home.dock); a saved antz-pins list wins */
+  var pinned = (recall(PIN_KEY) || CFG.home.pins || CFG.home.dock || []).filter(app).slice(0, MAX_PINS);
   function savePins() { store(PIN_KEY, pinned); }
   /* ---- saved items as widgets: a ref in config ({ type: 'animal', id: 'PL-014' }) → a Focus Hub key ('an:0:0') ---- */
   function refKey(ref) {
@@ -86,17 +88,67 @@
   function entryName(e) { if (typeof e === 'string') return app(e).name; var m = itemMeta(e.ref); return m ? m.t : 'Saved item'; }
   function normaliseEntry(e) { return typeof e === 'string' ? e : { type: 'item', ref: refKey(e.ref) }; }
 
+  /* ---- Command Centre widget types (page 1). Each one is a normal widget: edit mode, drag, resize,
+     remove / add back from the gallery, ⋯ menu, keyboard moves, Undo, saved layout. def = default size;
+     open = the module its title or "View all" opens. Renderers live in WIDGETS (search "COMMAND CENTRE WIDGETS"). ---- */
+  var DASHW = {
+    hero: { name: 'Animals overview', def: 'W', open: 'animals', desc: 'Total animals for the site, the change on last week and quick actions.' },
+    kpi: { name: 'KPI card', def: 'S', desc: 'One key number with its change on last week.' },
+    trend: { name: 'Trend chart', def: 'XL', desc: '12-week trend with metric and period filters.' },
+    action: { name: 'Quick action', def: 'S', desc: 'A module shortcut with its pending count.' },
+    activity: { name: 'Recent activity', def: 'XL', open: 'reports', desc: 'The latest records across modules, with status.' },
+    planning: { name: 'Planning', def: 'L', open: 'administer', desc: 'Progress towards this week’s targets.' },
+    attention: { name: 'Needs attention', def: 'L', open: 'administer', desc: 'Overdue and pending work, by module.' },
+    sites: { name: 'Sites', def: 'L', desc: 'Every site with its animals and audit score. Pick one to re-scope the dashboard.' },
+    team: { name: 'On duty', def: 'M', open: 'users', desc: 'Who is working today.' },
+    helpcard: { name: 'Need help?', def: 'S', open: 'help', desc: 'A shortcut to the Help Desk.' }
+  };
+  /* quick-action cards: module, pale tint from the module colour, count from data.js for the active site */
+  var ACTIONS = {
+    vacc: { module: 'administer', title: 'Pending vaccinations', icon: 'vaccines', n: function (m) { return m.vacc.pending; }, d: function (m) { return fmt(m.vacc.overdue) + ' overdue, the rest due this week'; } },
+    deworm: { module: 'administer', title: 'Pending deworming', icon: 'medication', n: function (m) { return m.deworm.pending; }, d: function (m) { return fmt(m.deworm.overdue) + ' overdue, the rest due this week'; } },
+    approvals: { module: 'approvals', title: 'Approvals', icon: 'task_alt', n: function (m) { return m.pending.approvals; }, d: function () { return 'transfer requests waiting'; } },
+    help: { module: 'help', title: 'Help Desk', icon: 'support_agent', n: function () { return TICKETS.filter(function (t) { return t[4] === 'Open'; }).length; }, d: function () { return 'open tickets. Raise a new one.'; } },
+    lab: { module: 'lab', title: 'Lab results', icon: 'biotech', n: function (m) { return m.pending.lab; }, d: function (m) { return fmt(m.lab.flagged) + ' flagged for review'; } },
+    necropsy: { module: 'necropsy', title: 'Necropsy reports', icon: 'labs', n: function (m) { return m.pending.necropsy; }, d: function (m) { return fmt(m.necropsy.drafts) + ' in draft'; } }
+  };
+  /* trend chart metrics (12 weekly points from data.js) */
+  var TRENDS = {
+    health: { label: 'Health cases', key: 'treatment', unit: 'animals in treatment', module: 'medical' },
+    mortality: { label: 'Mortality', key: 'mortality', unit: 'deaths', module: 'mortality' },
+    births: { label: 'New animals', key: 'newAnimals', unit: 'new animals', module: 'animals' },
+    overdue: { label: 'Overdue tasks', key: 'overdue', unit: 'overdue tasks', module: 'administer' },
+    audit: { label: 'Audit score', key: 'audit', unit: '% audit score', module: 'audit' }
+  };
+  function dashName(it) {
+    if (it.type === 'kpi') { var kk = DATA && DATA.kpi(it.metric, S.site); return kk ? kk.label : 'KPI'; }
+    if (it.type === 'action') return ACTIONS[it.preset] ? ACTIONS[it.preset].title : 'Quick action';
+    if (it.type === 'trend') return (TRENDS[it.metric] || TRENDS.health).label + ' trend';
+    return DASHW[it.type].name;
+  }
+  function dashOpen(it) {
+    if (it.type === 'kpi') { var kk = DATA && DATA.kpi(it.metric, S.site); return kk ? kk.module : 'focus'; }
+    if (it.type === 'action') return ACTIONS[it.preset] ? ACTIONS[it.preset].module : 'focus';
+    if (it.type === 'trend') return (TRENDS[it.metric] || TRENDS.health).module;
+    return DASHW[it.type].open || 'collections';
+  }
+
   /* config layout → internal items: { k: 'a', id } for apps, { k: 'w', id, type, size } for widgets/stacks/items */
   function layoutFromConfig() {
     return CFG.home.pages.map(function (items, p) {
       return items.map(function (x, i) {
         if (x.app) return { k: 'a', id: x.app };
-        var id = x.id || 'p' + p + '-' + i;
-        if (x.stack) return { k: 'w', id: id, type: 'stack', name: x.stack, size: x.size || 'M', items: x.items.map(normaliseEntry), idx: 0 };
-        if (x.widget === 'item') return { k: 'w', id: id, type: 'item', ref: refKey(x.ref), size: x.size || 'M' };
-        if (x.widget === 'kpi') return { k: 'w', id: id, type: 'kpi', metric: x.metric, size: x.size || 'S' };
-        if (x.widget === 'attention') return { k: 'w', id: id, type: 'attention', size: x.size || 'L' };
-        return { k: 'w', id: id, type: x.widget, size: x.size || 'M' };
+        var id = x.id || 'p' + p + '-' + i, w;
+        if (x.stack) w = { k: 'w', id: id, type: 'stack', name: x.stack, size: x.size || 'M', items: x.items.map(normaliseEntry), idx: 0 };
+        else if (x.widget === 'item') w = { k: 'w', id: id, type: 'item', ref: refKey(x.ref), size: x.size || 'M' };
+        else {
+          w = { k: 'w', id: id, type: x.widget, size: x.size || (DASHW[x.widget] ? DASHW[x.widget].def : 'M') };
+          if (x.metric) w.metric = x.metric;
+          if (x.period) w.period = x.period;
+          if (x.preset) w.preset = x.preset;
+        }
+        if (p === 0 && x.zone === 'side') w.zone = 'side';
+        return w;
       });
     });
   }
@@ -107,13 +159,14 @@
     if (x.type === 'stack') return Array.isArray(x.items) && x.items.length > 0;
     if (x.type === 'item') return !!itemMeta(x.ref);
     if (x.type === 'kpi') return !!(DATA && DATA.kpi(x.metric, 'all'));
-    if (x.type === 'attention') return !!DATA;
+    if (x.type === 'action') return !!ACTIONS[x.preset];
+    if (DASHW[x.type]) return !!DATA;
     return !!app(x.type);
   }
   function loadLayout() {
     var saved = recall(LAYOUT_KEY);
     if (!saved || !Array.isArray(saved.pages)) return layoutFromConfig();
-    var pages = saved.pages.map(function (pg) { return (pg || []).filter(validItem); }).filter(function (pg) { return pg.length; });
+    var pages = saved.pages.map(function (pg) { return (pg || []).filter(validItem); }).filter(function (pg, i) { return i === 0 || pg.length; });
     if (!pages.length) return layoutFromConfig();
     APPS.forEach(function (a) {
       var present = pages.some(function (pg) { return pg.some(function (x) { return x.k === 'a' && x.id === a.id; }); });
@@ -130,7 +183,7 @@
   var S = { page: 0, nPages: 2, lib: false, pendingStack: '', stackW: '', editing: false, app: null, level: 'module', species: 0, animal: 0, ann: 0, chat: 0,
     noteColl: NOTE_COLLS[0], noteTypes: [], noteQ: '', noteSort: 'Newest first', spClass: 'All', spQ: '', spSort: 'count', anSex: 'All', anQ: '',
     focusTab: 'all', focusType: 'All', folder: FOLDERS[0], annFilter: 'All', chatFilter: 'all', status: '',
-    overlay: null, removed: {}, smartRotate: true, suggestions: true, nExpanded: {}, libQ: '', site: 'all' };
+    overlay: null, drawer: false, removed: {}, smartRotate: true, suggestions: true, nExpanded: {}, libQ: '', site: 'all' };
 
   /* keeps the browser tab title in step with what is on screen */
   function updateTitle() { document.title = (S.app ? app(S.app).name + ' · ' : '') + 'ANTZ'; }
@@ -221,7 +274,6 @@
     var c = $('#siteCoach'); if (c) c.remove();
   }
 
-  function dockLimit() { return isMobile() ? 4 : 6; }
   function isPinned(id) { return pinned.indexOf(id) > -1; }
   function findItem(wid) { for (var p = 0; p < PAGES.length; p++) for (var i = 0; i < PAGES[p].length; i++) if (PAGES[p][i].id === wid) return { p: p, i: i, it: PAGES[p][i] }; return null; }
   function stacks() { var r = []; PAGES.forEach(function (p) { p.forEach(function (x) { if (x.type === 'stack') r.push(x); }); }); return r; }
@@ -240,7 +292,7 @@
       '<button type="button" class="app" data-open="' + id + '" aria-label="' + esc(appLabel(a)) + '">' + appIc(a, true, where === 'fixed') + '<span class="app__lbl" aria-hidden="true">' + esc(a.name) + '</span></button>' +
       '<button type="button" class="app__more" data-more="app:' + id + '" aria-haspopup="menu" aria-label="More options for ' + esc(a.name) + '">' + icon('more') + '</button>' +
       '<button type="button" class="rm" data-remove="app:' + id + '" aria-label="Remove ' + esc(a.name) + ' from Home Screen">−</button>' +
-      '<button type="button" class="pin-b" data-pin="' + id + '" aria-pressed="' + isPinned(id) + '" aria-label="Pin ' + esc(a.name) + ' to Dock">' + icon('pin') + '</button></div>';
+      '<button type="button" class="pin-b" data-pin="' + id + '" aria-pressed="' + isPinned(id) + '" aria-label="Pin ' + esc(a.name) + ' to the sidebar">' + icon('pin') + '</button></div>';
   }
   function hd(type) { var a = app(type); return '<span class="wg__hd"><span class="gl" ' + tileStyle(a) + '>' + glyph(a) + '</span><span class="ell">' + esc(a.name) + '</span></span>'; }
   /* ================= IMAGES =================
@@ -420,19 +472,10 @@
       return hd(type) + '<small>2 open · 1 in progress</small>' + tk(5) + '<span class="tag">+ Raise a ticket</span>';
     },
     stats: statsBody,
-    /* Command Centre KPI card: value, change vs last week (icon + text, never colour alone), 12-week sparkline */
-    kpi: function (type, size, it) {
-      var k = DATA && DATA.kpi(it.metric, S.site); if (!k) return '';
-      var a = app(k.module), dir = k.delta.value > 0 ? 'arrow_upward' : k.delta.value < 0 ? 'arrow_downward' : 'remove';
-      var tone = k.good === null ? 'flat' : k.good ? 'good' : 'bad';
-      return '<span class="wg__hd"><span class="gl" ' + tileStyle(a) + '>' + glyph(a) + '</span><span class="ell">' + esc(k.label) + '</span></span>' +
-        '<span class="kpi__v">' + esc(k.value) + '</span>' +
-        '<span class="kpi__d kpi__d--' + tone + '"><span class="material-symbols-outlined" aria-hidden="true">' + dir + '</span>' + esc(k.deltaText) + '<span class="kpi__vs">vs last week</span></span>' +
-        CHARTS.spark({ series: k.series });
-    },
     /* Needs attention: overdue then pending work; each row opens its module */
     attention: function (type, size) {
       if (!DATA) return '';
+      size = size === 'XL' ? 'L' : size === 'W' ? 'M' : size;
       var at = DATA.attention(S.site);
       var row = function (r, kind) { var a = app(r[2]); return '<button type="button" class="att__row" data-open="' + r[2] + '"><span class="gl" ' + tileStyle(a) + '>' + glyph(a) + '</span><span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + '</small></span><span class="att__n att__n--' + kind + '">' + fmt(r[1]) + '</span></button>'; };
       var head = '<span class="wg__hd"><span class="gl" style="--f:var(--md-sys-color-tertiary)"><span class="material-symbols-outlined" aria-hidden="true">priority_high</span></span><span class="ell">Needs attention</span></span>';
@@ -441,6 +484,144 @@
       if (size !== 'M') list += '<span class="att__grp">Pending</span>' + at.pending.slice(0, 4).map(function (r) { return row(r, 'pend'); }).join('');
       return head + '<span class="att">' + list + '</span>';
     }
+  };
+  /* ================= COMMAND CENTRE WIDGETS (page 1) =================
+     Every renderer takes (type, size, it) and draws from data.js for the active site (S.site).
+     size is the size shown here: S, M, L, W (wide) or XL. */
+  function panelHd(title, open, openLabel, act) {
+    return '<span class="wg__hd ph-hd"><span class="ph-hd__t">' + esc(title) + '</span>' + (open || act
+      ? '<button type="button" class="ph-hd__all" ' + (act ? 'data-act="' + act + '"' : 'data-open="' + open + '"') + '>View all<span class="vh"> ' + esc(openLabel || '') + '</span><span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>' : '') + '</span>';
+  }
+  function deltaChip(value, text, good, srExtra) {
+    var dir = value > 0 ? 'arrow_upward' : value < 0 ? 'arrow_downward' : 'remove', tone = good === null ? 'flat' : good ? 'good' : 'bad';
+    return '<span class="kpi__d kpi__d--' + tone + '"><span class="material-symbols-outlined" aria-hidden="true">' + dir + '</span>' + esc(text) +
+      '<span class="vh"> ' + (srExtra || 'vs last week') + ', ' + (tone === 'good' ? 'better' : tone === 'bad' ? 'worse' : 'no change') + '</span></span>';
+  }
+  WIDGETS.hero = function (type, size) {
+    var m = siteMetrics(); if (!m) return '';
+    var k = DATA.kpi('animals', S.site);
+    var bg = imgSrc('dashHero') ? '<span class="hero__bg" aria-hidden="true"><img src="' + esc(imgSrc('dashHero')) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()"></span>' : '';
+    var main = '<button type="button" class="hero__main" data-open="animals"><span class="hero__lbl">Total animals · ' + esc(siteName(S.site)) + '</span>' +
+      '<span class="hero__v">' + fmt(m.animals) + '</span>' + deltaChip(k.delta.value, k.deltaText + ' vs last week', k.good, '') +
+      (size === 'S' ? '' : '<span class="hero__sub">' + fmt(m.species) + ' species · ' + fmt(m.enclosures) + ' enclosures</span>') + '<span class="vh">, open Animals</span></button>';
+    var acts = [['Add animal', 'add', 'animals'], ['Record treatment', 'medical_services', 'medical'], ['Log feed', 'restaurant', 'diet'], ['Scan tag', 'qr_code_scanner', '']];
+    var qa = size === 'S' ? '' : '<span class="hero__acts" role="group" aria-label="Quick actions">' + acts.map(function (x) {
+      return '<button type="button" class="hero__act" ' + (x[2] ? 'data-open="' + x[2] + '"' : 'data-act="heroScan"') + '><span class="hero__ai"><span class="material-symbols-outlined" aria-hidden="true">' + x[1] + '</span></span><span class="hero__al">' + x[0] + '</span></button>';
+    }).join('') + '</span>';
+    return bg + main + qa;
+  };
+  /* KPI card: icon chip, label, value, change chip (arrow + text, never colour alone); sparkline from Medium up */
+  WIDGETS.kpi = function (type, size, it) {
+    var k = DATA && DATA.kpi(it.metric, S.site); if (!k) return '';
+    var a = app(k.module);
+    return '<span class="kpi__top"><span class="kpi__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span></span><span class="kpi__l">' + esc(k.label) + '</span>' +
+      '<span class="kpi__row"><span class="kpi__v">' + esc(k.value) + '</span>' + deltaChip(k.delta.value, k.deltaText, k.good) + '</span>' +
+      (size === 'S' ? '' : CHARTS.spark({ series: k.series }));
+  };
+  function smoothPath(p) {
+    if (p.length < 2) return '';
+    var d = 'M' + p[0][0].toFixed(1) + ',' + p[0][1].toFixed(1);
+    for (var i = 0; i < p.length - 1; i++) {
+      var p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
+      var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6, c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ' C' + c1x.toFixed(1) + ',' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ',' + c2y.toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+    }
+    return d;
+  }
+  /* main trend: smooth area line with metric + period filters; hover, or focus and use ← →, to read any week */
+  WIDGETS.trend = function (type, size, it) {
+    var tm = TRENDS[it.metric] || TRENDS.health, per = +it.period || 12, m = siteMetrics(); if (!m) return '';
+    var ser = m.series[tm.key].slice(-per), labels = DATA.weeks.slice(-per), id = it.id || 'prev';
+    var max = niceMax(Math.max.apply(null, ser)), W = 600, H = 200;
+    var pts = ser.map(function (v, i) { return [i * W / (ser.length - 1), H - v / max * H]; });
+    var line = smoothPath(pts), area = line + ' L' + W + ',' + H + ' L0,' + H + ' Z';
+    var peak = ser.indexOf(Math.max.apply(null, ser)), first = ser[0], last = ser[ser.length - 1];
+    var summary = tm.label + ', last ' + per + ' weeks: from ' + fmt(first) + ' to ' + fmt(last) + ', peak ' + fmt(ser[peak]) + ' in the week of ' + labels[peak] + '.';
+    var sel = size === 'S' ? '' : '<span class="tr__f"><label class="vh" for="trM-' + id + '">Metric</label><select id="trM-' + id + '" class="tr__sel" data-trend="' + id + '" data-k="metric">' +
+      Object.keys(TRENDS).map(function (k) { return '<option value="' + k + '"' + (k === (it.metric || 'health') ? ' selected' : '') + '>' + TRENDS[k].label + '</option>'; }).join('') + '</select>' +
+      '<label class="vh" for="trP-' + id + '">Period</label><select id="trP-' + id + '" class="tr__sel" data-trend="' + id + '" data-k="period">' +
+      [12, 8, 4].map(function (n) { return '<option value="' + n + '"' + (n === per ? ' selected' : '') + '>' + n + ' weeks</option>'; }).join('') + '</select></span>';
+    var head = '<span class="wg__hd tr__hd"><button type="button" class="tr__title" data-open="' + tm.module + '">' + esc(tm.label) + '<span class="vh">, open ' + esc(app(tm.module).name) + '</span></button>' + sel + '</span>';
+    var x = function (i) { return (i / (ser.length - 1) * 100).toFixed(2) + '%'; }, y = function (i) { return (100 - ser[i] / max * 100).toFixed(2) + '%'; };
+    var tipTxt = function (i) { return labels[i] + ': ' + fmt(ser[i]) + ' ' + tm.unit; };
+    var xl = labels.map(function (l, i) { return (ser.length <= 8 || (i % 2 === 0 && i !== ser.length - 2) || i === ser.length - 1) ? '<span' + (i % 4 === 0 || i === ser.length - 1 ? ' class="k"' : '') + ' style="left:' + x(i) + '">' + esc(l) + '</span>' : ''; }).join('');
+    return head + '<span class="tr__chart"><span class="tr__y" aria-hidden="true"><span>' + fmt(max) + '</span><span>' + fmt(max / 2) + '</span><span>0</span></span>' +
+      '<span class="tr__plot" tabindex="0" role="slider" aria-label="' + esc(tm.label) + ' by week. Use left and right arrow keys" aria-valuemin="1" aria-valuemax="' + ser.length + '" aria-valuenow="' + (peak + 1) + '" aria-valuetext="' + esc(tipTxt(peak)) + '"' +
+        ' data-vals="' + ser.join(',') + '" data-labels="' + esc(labels.join('|')) + '" data-unit="' + esc(tm.unit) + '" data-max="' + max + '">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="trG-' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--viz-1);stop-opacity:.3"/><stop offset="1" style="stop-color:var(--viz-1);stop-opacity:0"/></linearGradient></defs>' +
+        '<path class="tr__grid" d="M0,0 H' + W + ' M0,' + H / 2 + ' H' + W + '"/><path d="' + area + '" fill="url(#trG-' + id + ')"/><path class="tr__line" d="' + line + '"/></svg>' +
+        '<span class="tr__guide" aria-hidden="true" style="left:' + x(peak) + '"></span><span class="tr__dot" aria-hidden="true" style="left:' + x(peak) + ';top:' + y(peak) + '"></span>' +
+        '<span class="tr__tip" aria-hidden="true" style="left:' + x(peak) + ';top:' + y(peak) + '">' + esc(tipTxt(peak)) + '</span></span>' +
+      '<span class="tr__x" aria-hidden="true">' + xl + '</span></span><span class="vh">' + esc(summary) + '</span>';
+  };
+  function setTrendIdx(plot, i) {
+    var vals = plot.dataset.vals.split(',').map(Number), labels = plot.dataset.labels.split('|'), max = +plot.dataset.max;
+    i = Math.max(0, Math.min(vals.length - 1, i));
+    var x = (i / (vals.length - 1) * 100) + '%', y = (100 - vals[i] / max * 100) + '%', txt = labels[i] + ': ' + fmt(vals[i]) + ' ' + plot.dataset.unit;
+    $('.tr__dot', plot).style.left = x; $('.tr__dot', plot).style.top = y; $('.tr__guide', plot).style.left = x;
+    var tip = $('.tr__tip', plot); tip.style.left = x; tip.style.top = y; tip.textContent = txt;
+    tip.classList.toggle('is-left', i > vals.length * 0.75); tip.classList.toggle('is-right', i < vals.length * 0.2);
+    plot.setAttribute('aria-valuenow', i + 1); plot.setAttribute('aria-valuetext', txt);
+  }
+  WIDGETS.action = function (type, size, it) {
+    var ac = ACTIONS[it.preset], m = siteMetrics(); if (!ac || !m) return '';
+    var a = app(ac.module);
+    return '<span class="qa__ic" ' + tileStyle(a) + '><span class="material-symbols-outlined" aria-hidden="true">' + ac.icon + '</span></span>' +
+      '<span class="qa__t">' + esc(ac.title) + '</span><span class="qa__n">' + fmt(ac.n(m)) + '</span><span class="qa__d">' + esc(ac.d(m)) + '</span>' +
+      '<span class="qa__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>';
+  };
+  /* status pills use the ANTZ status fills with black text, plus the word itself */
+  function statusPill(st) { return '<span class="st st--' + st.toLowerCase() + '">' + esc(st) + '</span>'; }
+  WIDGETS.activity = function (type, size) {
+    if (!DATA) return '';
+    var rows = DATA.activity(S.site), n = size === 'S' ? 1 : size === 'M' ? 1 : size === 'W' ? 2 : size === 'L' ? 4 : 5;
+    var head = panelHd('Recent activity', 'reports', 'activity in Reports');
+    var thumb = function (r) { var a = app(r.module); return imgSrc(r.img) ? media(r.img, '', 'ac__th') : '<span class="ac__th ac__th--ic" ' + tileStyle(a) + '>' + glyph(a) + '</span>'; };
+    if (size === 'S') {
+      var r0 = rows[0], open = rows.filter(function (r) { return r.status !== 'Completed'; }).length;
+      return head + '<span class="wg__big">' + open + '</span><span class="wg__lbl">open of the last ' + rows.length + ' records</span><b class="ell" style="font-size:13px">' + esc(r0.title) + '</b>';
+    }
+    return head + '<table class="ac" role="table"><caption class="vh">Recent activity, ' + esc(siteName(S.site)) + '</caption>' +
+      '<thead class="ac__hd" role="rowgroup"><tr role="row"><th scope="col" role="columnheader">Type</th><th scope="col" role="columnheader">Details</th><th scope="col" role="columnheader">Site</th><th scope="col" role="columnheader">Status</th><th scope="col" role="columnheader">Date</th></tr></thead><tbody role="rowgroup">' +
+      rows.slice(0, n).map(function (r) {
+        var a = app(r.module);
+        return '<tr role="row"><td class="ac__type" role="cell"><span class="ac__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span><span>' + esc(r.type) + '</span></td>' +
+          '<td class="ac__det" role="cell"><button type="button" class="ac__open" data-open="' + r.module + '">' + thumb(r) + '<span class="ac__txt"><b>' + esc(r.title) + '</b><small>' + esc(r.who) + '</small></span></button></td>' +
+          '<td class="ac__site" role="cell">' + esc(r.site) + '</td><td class="ac__st" role="cell">' + statusPill(r.status) + '</td><td class="ac__date" role="cell">' + esc(r.when) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  };
+  WIDGETS.planning = function (type, size) {
+    if (!DATA) return '';
+    var rows = DATA.planning(S.site), n = size === 'S' ? 1 : size === 'M' || size === 'W' ? 2 : 4;
+    return panelHd('Planning', 'administer', 'plans in Administer') + '<span class="pl-list">' + rows.slice(0, n).map(function (r) {
+      var pc = Math.min(100, Math.round(r.done / r.total * 100));
+      var txt = r.unit === '%' ? r.done + '% of a ' + r.total + '% target' : fmt(r.done) + ' of ' + fmt(r.total) + ' ' + r.unit;
+      return '<button type="button" class="pl" data-open="' + r.module + '"><span class="pl__t"><b>' + esc(r.label) + '</b><span class="pl__p">' + pc + '%</span></span>' +
+        '<span class="pl__bar" aria-hidden="true"><i style="width:' + pc + '%"></i></span><small>' + esc(txt) + '</small></button>';
+    }).join('') + '</span>';
+  };
+  /* Sites: like an exchange-rate list; picking a row re-scopes the whole dashboard */
+  WIDGETS.sites = function (type, size) {
+    if (!DATA) return '';
+    var n = size === 'S' ? 2 : size === 'M' ? 4 : 6;
+    var list = [{ id: 'all', name: 'All sites', animals: DATA.all.animals, audit: DATA.all.audit, series: DATA.all.series }].concat(DATA.sites.slice().sort(function (a, b) { return b.animals - a.animals; }));
+    return panelHd('Sites', '', 'sites', 'site') + '<span class="sl">' + list.slice(0, n).map(function (x) {
+      var au = x.series.audit, d = au[au.length - 1] - au[au.length - 2], on = x.id === S.site;
+      return '<button type="button" class="sl__row" data-site="' + x.id + '"' + (on ? ' aria-current="true"' : '') + '><span class="sl__ic material-symbols-outlined" aria-hidden="true">' + (x.id === 'all' ? 'apartment' : 'location_on') + '</span>' +
+        '<span class="sl__n"><b>' + esc(x.name) + '</b><small>' + fmt(x.animals) + ' animals</small></span><span class="sl__a">' + x.audit + '%<span class="vh"> audit score</span></span>' +
+        deltaChip(d, (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d), d === 0 ? null : d > 0, 'points vs last week') + (on ? '<span class="vh">, showing now</span>' : '') + '</button>';
+    }).join('') + '</span>';
+  };
+  WIDGETS.team = function (type, size) {
+    if (!DATA) return '';
+    var t = DATA.team(S.site), n = size === 'S' ? 2 : size === 'M' ? 3 : 6;
+    return panelHd('On duty today', 'users', 'staff in Users') + '<small class="tm__sub">' + fmt(t.onDuty) + ' of ' + fmt(t.staff) + ' staff active</small><span class="tm-list">' + t.people.slice(0, n).map(function (p) {
+      return '<span class="tm"><span class="av" aria-hidden="true">' + initials(p.name) + '</span><span class="tm__n"><b>' + esc(p.name) + '</b><small>' + esc(p.shift + ' · ' + p.site) + '</small></span><span class="tag tm__role">' + esc(p.role) + '</span></span>';
+    }).join('') + '</span>';
+  };
+  WIDGETS.helpcard = function (type, size) {
+    return '<span class="hc"><span class="hc__ic" aria-hidden="true"><span class="material-symbols-outlined">support_agent</span></span><span class="hc__t"><b>Need help?</b><small>Our Help Desk replies within one working day.</small></span></span>' +
+      '<button type="button" class="btn btn--primary btn--sm hc__btn" data-open="help">Contact Help Desk<span class="material-symbols-outlined ico ico--sm" aria-hidden="true">arrow_forward</span></button>';
   };
   /* ---- 'item': any Focus Hub item (species, animal, note, announcement) as its own widget.
      One renderer per item kind in ITEM_RENDERERS, keyed by the Focus Hub key prefix. ---- */
@@ -489,22 +670,37 @@
     return r ? r(key.split(':'), size, m) : itemHd(m) + '<b class="wg__t">' + esc(m.t) + '</b><small>' + esc(m.sub) + '</small>';
   };
   function widgetBody(type, size, it) {
-    if (type === 'item' || type === 'kpi' || type === 'attention') return WIDGETS[type](type, size, it);
+    if (type === 'item' || DASHW[type]) return WIDGETS[type](type, size, it || {});
     var a = app(type), render = WIDGETS[(a && a.widget) || 'stats'] || WIDGETS.stats;
     return render(type, size, it);
   }
   function widgetLabel(it) {
     if (it.type === 'stack') return it.name + ' stack';
     if (it.type === 'item') { var m = itemMeta(it.ref); return (m ? m.t : 'Saved item') + ' widget'; }
-    if (it.type === 'kpi') { var kk = DATA && DATA.kpi(it.metric, S.site); return (kk ? kk.label : 'KPI') + ' card'; }
-    if (it.type === 'attention') return 'Needs attention widget';
+    if (DASHW[it.type]) return dashName(it) + ' widget';
     return app(it.type).name + ' widget';
   }
-  /* widget sizes: S 2×2, M 4×2, L 4×4, XL 8×4 (XL only where the grid has 8+ columns) */
-  var SZ = ['S', 'M', 'L', 'XL'], SZ_NAME = { S: 'Small', M: 'Medium', L: 'Large', XL: 'Extra large' }, SPAN = { S: [2, 2], M: [4, 2], L: [4, 4], XL: [8, 4] };
+  /* ---- widget sizes depend on where the widget sits ----
+     'sb'   springboard pages 2+:  S 2×2, M 4×2, L 4×4, XL 8×4 (XL only with 8+ columns)
+     'main' dashboard main area (4 columns; 2 on phones): S 1×2, M 2×2, L 2×4, W 4×2, XL 4×4
+     'side' dashboard right column (1 column; 2 side by side on tablets): S 1×2, M 1×3, L 1×4
+     The saved size is kept as chosen; eff() shows the nearest size the current place and screen allow. */
+  var SZ = ['S', 'M', 'L', 'W', 'XL'], SZ_NAME = { S: 'Small', M: 'Medium', L: 'Large', W: 'Wide', XL: 'Extra large' };
+  var SZ_FALLBACK = { XL: ['L', 'W', 'M', 'S'], W: ['M', 'L', 'S'], L: ['M', 'S'], M: ['S', 'L'], S: ['M'] };
+  function bp() { var w = window.innerWidth; return w <= 640 ? 'phone' : w < 1240 ? 'tab' : 'desk'; }
   function gridCols() { return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols'), 10) || 4; }
-  function maxSz() { return gridCols() >= 8 ? 3 : 2; }
-  function eff(size) { return SZ.indexOf(size) > maxSz() ? SZ[maxSz()] : size; }
+  function spansFor(ctx) {
+    if (ctx === 'main') return bp() === 'phone' ? { S: [1, 2], M: [2, 2], W: [2, 3], L: [2, 4] } : { S: [1, 2], M: [2, 2], L: [2, 4], W: [4, 2], XL: [4, 4] };
+    if (ctx === 'side') return { S: [1, 2], M: [1, 3], L: [1, 4] };
+    var sp = { S: [2, 2], M: [4, 2], L: [4, 4] }; if (gridCols() >= 8) sp.XL = [8, 4]; return sp;
+  }
+  function sizesFor(ctx) { var sp = spansFor(ctx); return SZ.filter(function (s) { return sp[s]; }); }
+  function eff(size, ctx) {
+    var ok = sizesFor(ctx || 'sb'); if (ok.indexOf(size) > -1) return size;
+    var fb = SZ_FALLBACK[size] || []; for (var i = 0; i < fb.length; i++) if (ok.indexOf(fb[i]) > -1) return fb[i];
+    return ok[0];
+  }
+  function ctxOf(it) { var f = findItem(it.id); return f && f.p === 0 ? (it.zone === 'side' ? 'side' : 'main') : 'sb'; }
   function setSize(wid, size, silent) {
     var f = findItem(wid); if (!f) return;
     var old = f.it.size; if (old === size) return;
@@ -513,68 +709,79 @@
     if (!silent) toast(widgetLabel(f.it) + ' is now ' + SZ_NAME[size] + '.', 'Undo', function () { setSize(wid, old, true); });
     updateTitle();
   }
-  function widgetCell(it) {
+  function widgetCell(it, ctx) {
+    ctx = ctx || 'sb';
     var stack = it.type === 'stack';
     if (stack && it.idx >= it.items.length) it.idx = 0;
     var cur = stack ? it.items[it.idx] : null;
     var type = stack ? entryType(cur) : it.type;
     var ref = stack ? (cur && cur.ref) : it.ref;
-    var kp = type === 'kpi' && DATA ? DATA.kpi(it.metric, S.site) : null;
-    var name = type === 'item' ? entryName({ ref: ref }) : type === 'kpi' ? (kp ? kp.label : 'KPI') : type === 'attention' ? 'Needs attention' : app(type).name;
+    var dash = !!DASHW[type];
+    var name = type === 'item' ? entryName({ ref: ref }) : dash ? dashName(it) : app(type).name;
     var label = widgetLabel(it);
-    var sz = eff(it.size);
+    var sz = eff(it.size, ctx);
     var dots = stack ? '<div class="stack-dots" role="group" aria-label="' + esc(it.name) + ' stack">' + it.items.map(function (t, i) {
       return '<button type="button" data-act="stackTo" data-w="' + it.id + '" data-i="' + i + '" aria-label="Show ' + esc(entryName(t)) + '"' + (i === it.idx ? ' aria-current="true"' : '') + '></button>';
     }).join('') + '</div>' : '';
-    var target = type === 'item' ? 'data-item="' + ref + '"' : type === 'kpi' ? 'data-open="' + (kp ? kp.module : 'focus') + '"' : 'data-open="' + type + '"';
-    var statsCls = app(type) && !app(type).widget ? ' wg--stats wg--' + (app(type).chart || 'columns') : type === 'kpi' ? ' wg--kpi' : '';
-    var bodySize = sz === 'XL' ? 'L' : sz;
-    /* the attention list holds its own row buttons, so its body is not one big button */
-    var body = type === 'attention'
-      ? '<div class="wg__btn wg__body">' + widgetBody(type, bodySize, it) + '</div>'
-      : '<button type="button" class="wg__btn" ' + target + '>' + widgetBody(type, bodySize, { ref: ref, metric: it.metric }) + '<span class="vh">, open ' + esc(name) + (stack ? '. ' + esc(it.name) + ' stack, ' + (it.idx + 1) + ' of ' + it.items.length : '') + '</span></button>';
-    return '<div class="wg wg--' + sz + (stack ? ' wg--stack' : '') + (type === 'item' ? ' wg--item' : '') + (type === 'attention' ? ' wg--attention' : '') + statsCls + '" data-cell="w:' + it.id + '">' +
+    var target = type === 'item' ? 'data-item="' + ref + '"' : 'data-open="' + (dash ? dashOpen(it) : type) + '"';
+    var statsCls = dash ? ' wg--' + type : app(type) && !app(type).widget ? ' wg--stats wg--' + (app(type).chart || 'columns') : '';
+    var bodySize = dash ? sz : sz === 'XL' ? 'L' : sz === 'W' ? 'M' : sz;
+    var opts = { ref: ref, metric: it.metric, preset: it.preset, period: it.period, id: it.id, ctx: ctx };
+    /* panels with their own buttons, links or filters are a plain container; the rest are one big button */
+    var body = dash && type !== 'kpi' && type !== 'action'
+      ? '<div class="wg__btn wg__body">' + widgetBody(type, bodySize, opts) + '</div>'
+      : '<button type="button" class="wg__btn" ' + target + '>' + widgetBody(type, bodySize, opts) + '<span class="vh">, open ' + esc(dash ? app(dashOpen(it)).name : name) + (stack ? '. ' + esc(it.name) + ' stack, ' + (it.idx + 1) + ' of ' + it.items.length : '') + '</span></button>';
+    var tint = type === 'action' && ACTIONS[it.preset] ? ' style="--f:' + app(ACTIONS[it.preset].module).colour + '"' : '';
+    return '<div class="wg wg--' + sz + (stack ? ' wg--stack' : '') + (type === 'item' ? ' wg--item' : '') + statsCls + '" data-cell="w:' + it.id + '"' + tint + '>' +
       body + dots +
       '<button type="button" class="more" data-more="w:' + it.id + '" aria-haspopup="menu" aria-label="More options for ' + esc(label) + '">' + icon('more') + '</button>' +
       '<button type="button" class="rm" data-remove="w:' + it.id + '" aria-label="Remove ' + esc(label) + '">−</button>' +
       '<button type="button" class="rs" data-resize="' + it.id + '" aria-label="Resize ' + esc(label) + ', now ' + SZ_NAME[sz] + '. Drag the corner, or use the arrow keys"></button></div>';
   }
+  function greeting() { var h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
+  /* page 1 heading: greeting, active site + date, sync status; on phones a row of pinned-module chips */
+  function dashHeader() {
+    var m = siteMetrics(), n = DATA ? DATA.sites.length : 9;
+    var chips = bp() === 'phone' && pinned.length ? '<nav class="pin-chips" aria-label="Pinned modules">' + pinned.map(function (id) {
+      var a = app(id); return '<button type="button" class="pin-chip" data-open="' + id + '" ' + tileStyle(a) + '><span class="material-symbols-outlined" aria-hidden="true">' + a.icon + '</span>' + esc(a.name) + '</button>';
+    }).join('') + '</nav>' : '';
+    return '<header class="dash-hd"><div class="dash-hd__txt"><h1 id="dashH" class="dash-hd__t">' + greeting() + ', ' + esc(CFG.user.first) + ' <span aria-hidden="true">👋</span></h1>' +
+      '<p class="dash-hd__s">Here’s ' + esc(siteName(S.site)) + ' today · ' + esc(CFG.user.date) + ' · sample data</p></div>' +
+      '<p class="dash-ok"><span class="material-symbols-outlined" aria-hidden="true">verified</span><span><b>' + (S.site === 'all' ? 'All ' + n + ' sites synced' : esc(siteName(S.site)) + ' synced') + '</b><small>Audit score ' + (m ? m.audit : '–') + '% · updated 09:00</small></span></p></header>' + chips;
+  }
   function renderHome() {
-    var keep = document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-cell]');
+    var keep = document.activeElement && document.activeElement.closest && document.activeElement.closest('#homePages [data-cell]');
     var keepSel = keep ? keep.getAttribute('data-cell') : null;
-    var keepCls = document.activeElement ? document.activeElement.className : '';
-    var lim = dockLimit();
-    var dockIds = pinned.slice(0, lim), fixedIds = pinned.slice(lim);
-    var dock = dockIds.map(function (id) { return appCell(id, 'dock'); }).join('');
-    for (var i = dockIds.length; i < lim; i++) dock += '<span class="dock-slot" aria-hidden="true"></span>';
-    if (!dockIds.length) dock += '<span class="dock-empty">Pin a module to keep it here</span>';
-    $('#dock').innerHTML = dock;
-    /* reflow like iOS: page 1 holds its own items up to its cell capacity; the rest flows onto as many pages as needed */
-    var cap = capacity(), COST = { S: 4, M: 8, L: 16, XL: 32 };
-    var pages = [{ html: fixedIds.map(function (id) { return appCell(id, 'fixed'); }).join(''), used: fixedIds.length }];
-    /* page 1 is the Command Centre: it never overflows onto page 2 (it scrolls on small screens) */
-    var place = function (h, c, noCap) { var cur = pages[pages.length - 1]; if (!noCap && cur.used > 0 && cur.used + c > cap) { cur = { html: '', used: 0 }; pages.push(cur); } cur.html += h; cur.used += c; };
+    var keepCls = keep ? document.activeElement.className : '';
+    var keepScroll = $('.page--dash') ? $('.page--dash').scrollTop : 0;
+    /* page 1 is the dashboard (main area + right column, scrolls); pages 2+ reflow like iOS by cell capacity */
+    var cap = capacity(), COST = { S: 4, M: 8, L: 16, W: 16, XL: 32 };
+    var pages = [{ html: '', side: '', used: 0 }];
+    var place = function (h, c, noCap, side) { var cur = pages[pages.length - 1]; if (!noCap && cur.used > 0 && cur.used + c > cap) { cur = { html: '', side: '', used: 0 }; pages.push(cur); } if (side) cur.side += h; else cur.html += h; cur.used += c; };
     PAGES.forEach(function (items, p) {
-      if (p > 0 && pages[pages.length - 1].used > 0) pages.push({ html: '', used: 0 });
+      if (p === 1 || (p > 1 && pages[pages.length - 1].used > 0)) pages.push({ html: '', side: '', used: 0 });
       items.forEach(function (it) {
-        if (it.k === 'a' && (isPinned(it.id) || S.removed[it.id])) return;
-        var c = it.k === 'a' ? 1 : COST[eff(it.size)];
-        place(it.k === 'a' ? appCell(it.id, 'page') : widgetCell(it), c, p === 0);
+        if (it.k === 'a' && S.removed[it.id]) return;
+        var ctx = p === 0 ? (it.zone === 'side' ? 'side' : 'main') : 'sb';
+        var c = it.k === 'a' ? 1 : COST[eff(it.size, ctx)];
+        place(it.k === 'a' ? appCell(it.id, 'page') : widgetCell(it, ctx), c, p === 0, ctx === 'side');
       });
     });
     S.nPages = pages.length;
     $('#homePages').innerHTML = pages.map(function (pg, i) {
-      if (i === 0) return '<section class="page page--dash" data-page="0" aria-labelledby="dashH"><header class="dash-hd"><div><h1 id="dashH" class="dash-hd__t">Command Centre</h1>' +
-        '<p class="dash-hd__s"><span class="material-symbols-outlined" aria-hidden="true">location_on</span><b>' + esc(siteName(S.site)) + '</b><span>' + esc(CFG.user.date) + '</span></p></div><span class="tag dash-hd__tag">Sample data</span></header><div class="sb-grid">' + pg.html + '</div></section>';
+      if (i === 0) return '<section class="page page--dash" data-page="0" aria-label="Command Centre">' + dashHeader() +
+        '<div class="dash"><div class="sb-grid dz dz--main" data-zone="main" role="group" aria-label="Main panels">' + pg.html + '</div>' +
+        '<div class="sb-grid dz dz--side" data-zone="side" role="group" aria-label="Right column">' + pg.side + '</div></div></section>';
       return '<section class="page" data-page="' + i + '" aria-label="Home page ' + (i + 1) + '"><div class="sb-grid">' + pg.html + '</div></section>';
     }).join('');
     spillOverflow();
     $('#libPage').dataset.page = S.nPages;
     if (S.lib) S.page = S.nPages; else if (S.page >= S.nPages) S.page = S.nPages - 1;
+    if ($('.page--dash')) $('.page--dash').scrollTop = keepScroll;
     renderLibrary();
     renderPageCtl();
     if (keepSel) {
-      var cell = $('[data-cell="' + keepSel + '"]');
+      var cell = $('#homePages [data-cell="' + keepSel + '"]');
       var target = cell && (keepCls ? cell.querySelector('.' + keepCls.split(' ')[0]) : null);
       if (target) target.focus({ preventScroll: true });
     }
@@ -602,12 +809,13 @@
     }
     S.nPages = pages.length;
   }
-  /* put a new widget in the first page that still has room (page 1 first), else a new page */
+  /* a new widget goes on the dashboard when you are looking at it, else on the first springboard page with room */
   function placeNew(item) {
-    var cap = capacity(), COST = { S: 4, M: 8, L: 16, XL: 32 };
+    if (S.page === 0 && !S.lib) { item.zone = 'main'; PAGES[0].push(item); return 0; }
+    var cap = capacity(), COST = { S: 4, M: 8, L: 16, W: 16, XL: 32 };
     var need = COST[eff(item.size)];
-    for (var p = 0; p < PAGES.length; p++) {
-      var used = PAGES[p].reduce(function (n, x) { return n + (x.k === 'a' ? (isPinned(x.id) || S.removed[x.id] ? 0 : 1) : COST[eff(x.size)]); }, p === 0 ? Math.max(0, pinned.length - dockLimit()) : 0);
+    for (var p = 1; p < PAGES.length; p++) {
+      var used = PAGES[p].reduce(function (n, x) { return n + (x.k === 'a' ? (S.removed[x.id] ? 0 : 1) : COST[eff(x.size)]); }, 0);
       if (used + need <= cap) { PAGES[p].push(item); return p; }
     }
     PAGES.push([item]); return PAGES.length - 1;
@@ -615,18 +823,15 @@
   function capacity() {
     var cs = getComputedStyle(document.documentElement);
     var cols = parseInt(cs.getPropertyValue('--cols'), 10) || 4, row = parseFloat(cs.getPropertyValue('--row')) || 90, gap = parseFloat(cs.getPropertyValue('--gapY')) || 10;
-    var h = ($('.page') ? $('.page').clientHeight : 600) - 20;
+    var pg = $('#homePages .page:not(.page--dash)') || $('.page');
+    var h = (pg ? pg.clientHeight : 600) - 20;
     var rows = Math.max(3, Math.floor((h + gap) / (row + gap)));
     return cols * rows;
   }
   function renderPageCtl() {
-    var n = S.nPages, dots = '';
-    for (var i = 0; i <= n; i++) dots += '<button type="button" class="' + (i === n ? 'lib' : '') + '" data-act="page" data-p="' + i + '" aria-label="' + (i === n ? 'App Library' : 'Home page ' + (i + 1)) + '"' + (i === S.page ? ' aria-current="true"' : '') + '></button>';
-    $('#pdots').innerHTML = dots;
-    $('[data-act="prevPage"]').disabled = S.page === 0;
-    $('[data-act="nextPage"]').disabled = S.page === n;
     $$('.page').forEach(function (pg, i) { pg.classList.toggle('is-current', i === S.page); if (i === S.page) pg.removeAttribute('inert'); else pg.setAttribute('inert', ''); });
     $('#pages').style.transform = 'translateX(' + (-100 * S.page) + '%)';
+    renderSide();
   }
   function setPage(p) { S.page = Math.max(0, Math.min(S.nPages, p)); S.lib = S.page === S.nPages; renderPageCtl(); updateTitle(); }
 
@@ -640,7 +845,8 @@
       var L = a.name[0].toUpperCase();
       if (!letters[L]) { letters[L] = 1; html += '<h3 class="lib__letter" id="lib-' + L + '">' + L + '</h3>'; }
       html += '<div class="lib-row' + (a.core ? ' is-core' : '') + '" data-cell="lib:' + a.id + '"><button type="button" class="lib-open" data-open="' + a.id + '">' + appIc(a, true) +
-        '<span class="name">' + esc(a.name) + '<small>' + esc(a.sub) + (isPinned(a.id) ? ' · In Dock' : S.removed[a.id] ? ' · Library only' : '') + '</small></span></button>' +
+        '<span class="name">' + esc(a.name) + '<small>' + esc(a.sub) + (isPinned(a.id) ? ' · Pinned' : S.removed[a.id] ? ' · Library only' : '') + '</small></span></button>' +
+        '<button type="button" class="lib-more" data-pin="' + a.id + '" aria-pressed="' + isPinned(a.id) + '" aria-label="Pin ' + esc(a.name) + ' to the sidebar">' + icon('pin') + '</button>' +
         '<button type="button" class="lib-more" data-act="libAdd" data-id="' + a.id + '" aria-label="Add ' + esc(a.name) + ' widget">' + icon('plus') + '</button>' +
         '<button type="button" class="lib-more" data-more="app:' + a.id + '" aria-haspopup="menu" aria-label="More options for ' + esc(a.name) + '">' + icon('more') + '</button></div>';
     });
@@ -650,25 +856,164 @@
     }).join('');
   }
 
-  /* ================= PINNING ================= */
+  /* ================= PINNING + SIDEBAR =================
+     One pin list (antz-pins, up to MAX_PINS) shown in the sidebar on every screen size: a fixed
+     240px panel on desktop, a 72px icon rail on tablets (expand toggle, remembered), and a drawer
+     from the header menu button on phones. Pinning never moves a module off its home page.
+     Pin from: a module's ⋯ / long-press menu, the pin button in edit mode, the App Library,
+     the app header ("Pin to sidebar"), the "Pin a module" picker, or drag an icon/widget onto Pinned.
+     Unpin from: the same places, a pin's ⋯ menu, or drag a pin out of the sidebar. */
   function togglePin(id, trigger) {
     var a = app(id); if (!a) return;
+    var snap = pinned.slice();
     if (isPinned(id)) {
       pinned.splice(pinned.indexOf(id), 1);
-      toast(a.name + ' unpinned. It is back on its home page.', 'Undo', function () { pinned.push(id); savePins(); refreshAll(); });
+      toast(a.name + ' unpinned from the sidebar.', 'Undo', function () { pinned = snap; savePins(); refreshAll(); });
     } else {
       if (pinned.length >= MAX_PINS) { toast('Up to ' + MAX_PINS + ' pins. Unpin a module first.'); return; }
       pinned.push(id); delete S.removed[id];
-      toast(pinned.length <= dockLimit() ? a.name + ' pinned to the Dock.' : 'The Dock is full (' + dockLimit() + '). ' + a.name + ' is pinned to the start of page 1.');
+      toast(a.name + ' pinned to the sidebar.', 'Undo', function () { pinned = snap; savePins(); refreshAll(); });
     }
     savePins(); refreshAll();
     if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true });
   }
+  function movePin(id, dir) {
+    var i = pinned.indexOf(id), j = i + dir; if (i < 0) return;
+    if (j < 0 || j >= pinned.length) { toast(dir < 0 ? 'Already first' : 'Already last'); return; }
+    var snap = pinned.slice();
+    pinned.splice(i, 1); pinned.splice(j, 0, id); savePins(); refreshAll();
+    var b = $('#snPins [data-pin-item="' + id + '"]'); if (b) b.focus({ preventScroll: true });
+    toast(app(id).name + ' moved ' + (dir < 0 ? 'up' : 'down'), 'Undo', function () { pinned = snap; savePins(); refreshAll(); });
+  }
   function refreshAll() {
     renderHome();
     $$('[data-pin]').forEach(function (b) { if (b.dataset.pin) b.setAttribute('aria-pressed', String(isPinned(b.dataset.pin))); });
+    if (S.overlay === 'picker') renderPicker();
     updateTitle();
   }
+  function snItem(o) {
+    return '<li><button type="button" class="sn' + (o.cls || '') + '"' + o.attr + ' data-label="' + esc(o.label) + '"' + (o.cur ? ' aria-current="page"' : '') + '>' +
+      '<span class="sn__ic"' + (o.style || '') + '><span class="material-symbols-outlined" aria-hidden="true">' + o.icon + '</span></span><span class="sn__lbl">' + esc(o.label) + '</span>' +
+      (o.badge ? '<span class="sn__badge" aria-hidden="true">' + o.badge + '</span>' : '') + (o.sr ? '<span class="vh">' + esc(o.sr) + '</span>' : '') + '</button>' + (o.more || '') + '</li>';
+  }
+  function renderSide() {
+    if (!$('#snHome')) return;
+    var home = !S.app && !S.lib;
+    var h = snItem({ label: 'Command Centre', icon: 'space_dashboard', attr: ' data-act="navPage" data-p="0"', cur: home && S.page === 0 });
+    /* springboard pages: one item each, or a single "Home pages" item when a small screen makes many */
+    if (S.nPages <= 4) for (var i = 1; i < S.nPages; i++) h += snItem({ label: 'Home page ' + (i + 1), icon: 'apps', attr: ' data-act="navPage" data-p="' + i + '"', cur: home && S.page === i, cls: ' sn--sub' });
+    else if (S.nPages > 1) h += snItem({ label: 'Home pages', icon: 'apps', attr: ' data-act="navPage" data-p="' + (home && S.page > 0 ? S.page : 1) + '"', cur: home && S.page > 0, sr: ', ' + (S.nPages - 1) + ' pages, swipe to move between them' + (home && S.page > 0 ? ', page ' + (S.page + 1) + ' showing' : ''), cls: ' sn--sub' });
+    h += snItem({ label: 'All modules', icon: 'grid_view', attr: ' data-act="navPage" data-p="lib"', cur: !S.app && S.lib });
+    $('#snHome').innerHTML = h;
+    $('#snPinsN').textContent = pinned.length + ' of ' + MAX_PINS;
+    if (pd && pd.on) return;   /* a pin is being dragged: keep its list (a timed re-render would duplicate it) */
+    $('#snPins').innerHTML = pinned.length ? pinned.map(function (id) {
+      var a = app(id);
+      return snItem({ label: a.name, icon: a.icon, attr: ' data-open="' + id + '" data-pin-item="' + id + '"', cur: S.app === id, badge: a.badge, sr: a.badge ? ', ' + a.badge + ' ' + a.bw : '',
+        style: ' ' + tileStyle(a), cls: ' sn--pin',
+        more: '<button type="button" class="sn__more" data-more="pin:' + id + '" aria-haspopup="menu" aria-label="More options for ' + esc(a.name) + ' pin">' + icon('more') + '</button>' });
+    }).join('') : '<li class="side__empty"><b>Pin modules here</b><span>Use “Pin a module”, a module’s ⋯ menu, or drag an app icon here.</span></li>';
+    $('#sideToggle').hidden = bp() !== 'tab';
+  }
+  /* tablet rail: collapsed (72px icons + tooltips) or expanded; the choice is remembered */
+  function sideExpanded() { return recallRaw(SIDE_KEY) === 'open'; }
+  function applySideMode() {
+    var tab = bp() === 'tab', open = tab && sideExpanded();
+    document.body.classList.toggle('side-rail', tab && !open);
+    var t = $('#sideToggle');
+    t.setAttribute('aria-expanded', String(!tab || open));
+    t.setAttribute('aria-label', open ? 'Collapse sidebar' : 'Expand sidebar');
+    t.querySelector('.material-symbols-outlined').textContent = open ? 'left_panel_close' : 'left_panel_open';
+    if (bp() !== 'phone' && S.drawer) closeDrawer(true);
+  }
+  /* phone drawer: traps focus, Escape or the scrim closes it */
+  function openDrawer() {
+    closeOverlay(true); S.drawer = true;
+    document.body.classList.add('drawer-open'); $('#sideScrim').hidden = false;
+    $('#menuBtn').setAttribute('aria-expanded', 'true');
+    $('#side').setAttribute('role', 'dialog'); $('#side').setAttribute('aria-modal', 'true');
+    ui.setAttribute('inert', '');
+    var f = $('#side [aria-current="page"]') || $('#side .sn'); if (f) f.focus();
+  }
+  function closeDrawer(silent) {
+    if (!S.drawer) return; S.drawer = false;
+    document.body.classList.remove('drawer-open'); $('#sideScrim').hidden = true;
+    $('#menuBtn').setAttribute('aria-expanded', 'false');
+    $('#side').removeAttribute('role'); $('#side').removeAttribute('aria-modal');
+    ui.removeAttribute('inert');
+    if (!silent) $('#menuBtn').focus({ preventScroll: true });
+  }
+  function navPage(p) {
+    if (S.drawer) closeDrawer(true);
+    if (S.app) closeApp(true);
+    if (p === 'lib') { setPage(S.nPages); $('#libQ').focus({ preventScroll: true }); return; }
+    setPage(+p);
+    var pg = $('#homePages .page[data-page="' + p + '"]');
+    var f = pg && (+p === 0 ? $('#dashH', pg) : $('[data-cell] button', pg));
+    if (f) { if (+p === 0) f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
+  }
+  /* "Pin a module" picker: searchable list with pin toggles */
+  function openPicker() {
+    if (S.drawer) closeDrawer(true);
+    closeOverlay(true); opener = $('[data-act="pinPicker"]'); S.overlay = 'picker'; root._pkQ = '';
+    root.innerHTML = '<div class="sheet-wrap" data-act="closeOverlayBg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pkH"><div class="sheet__grip" aria-hidden="true"></div>' +
+      '<div class="sheet__hd"><h2 id="pkH">Pin modules to the sidebar</h2><button type="button" class="pill-btn pill-btn--dark" data-act="closeOverlay">Done</button></div>' +
+      '<label class="search search--pill"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">search</span><span class="vh">Search modules</span><input type="search" id="pkQ" placeholder="Search ' + APPS.length + ' modules" autocomplete="off"></label>' +
+      '<p class="muted pk__note" id="pkN"></p><ul class="pk-list" id="pkList"></ul></div></div>';
+    $('#pkQ').addEventListener('input', function (e) { root._pkQ = e.target.value; renderPicker(); });
+    renderPicker(); $('#pkQ').focus(); syncInert(); updateTitle();
+  }
+  function renderPicker() {
+    var q = (root._pkQ || '').toLowerCase();
+    var list = APPS.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).filter(function (a) { return !q || (a.name + ' ' + a.sub).toLowerCase().indexOf(q) > -1; });
+    $('#pkN').textContent = pinned.length + ' of ' + MAX_PINS + ' pinned. ' + list.length + ' modules shown.';
+    $('#pkList').innerHTML = list.map(function (a) {
+      var on = isPinned(a.id);
+      return '<li><span class="app__ic" ' + tileStyle(a, '--ic:34px') + ' aria-hidden="true">' + glyph(a) + '</span><span class="pk__t"><b>' + esc(a.name) + '</b><small>' + esc(a.sub) + '</small></span>' +
+        '<button type="button" class="btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost') + '" data-pin="' + a.id + '" aria-pressed="' + on + '" aria-label="Pin ' + esc(a.name) + ' to the sidebar">' + icon('pin') + (on ? 'Pinned' : 'Pin') + '</button></li>';
+    }).join('') || '<li class="muted">No module matches.</li>';
+  }
+
+  /* drag pins: reorder inside the sidebar, or drop outside it to unpin (keyboard: Alt+↑/↓, ⋯ menu) */
+  var pd = null;
+  document.addEventListener('pointerdown', function (e) {
+    var b = e.button === 0 && e.target.closest && e.target.closest('#snPins .sn--pin');
+    if (!b || e.target.closest('.sn__more')) return;
+    pd = { id: b.dataset.pinItem, el: b.parentElement, x: e.clientX, y: e.clientY, on: false };
+  }, true);
+  document.addEventListener('pointermove', function (e) {
+    if (!pd) return;
+    if (!pd.on) {
+      if (Math.abs(e.clientX - pd.x) < 6 && Math.abs(e.clientY - pd.y) < 6) return;
+      pd.on = true; pd.el.classList.add('is-drag-src'); document.body.classList.add('is-pin-drag');
+      var r = pd.el.getBoundingClientRect(); pd.dx = e.clientX - r.left; pd.dy = e.clientY - r.top;
+      pd.ghost = pd.el.cloneNode(true); pd.ghost.className = 'pin-ghost'; pd.ghost.setAttribute('aria-hidden', 'true'); pd.ghost.style.width = r.width + 'px';
+      document.body.appendChild(pd.ghost);
+    }
+    e.preventDefault();
+    pd.ghost.style.transform = 'translate(' + (e.clientX - pd.dx) + 'px,' + (e.clientY - pd.dy) + 'px)';
+    var side = $('#side').getBoundingClientRect(), out = e.clientX > side.right + 8;
+    pd.out = out; pd.ghost.classList.toggle('is-out', out);
+    if (out) return;
+    var list = $('#snPins'), sibs = $$('li', list).filter(function (li) { return li !== pd.el && li.querySelector('.sn--pin'); });
+    var after = null;
+    sibs.forEach(function (li) { var rr = li.getBoundingClientRect(); if (e.clientY > rr.top + rr.height / 2) after = li; });
+    if (after) after.after(pd.el); else list.insertBefore(pd.el, list.firstChild);
+  }, true);
+  document.addEventListener('pointerup', function () {
+    if (!pd) return;
+    var d = pd; pd = null;
+    if (!d.on) return;
+    d.ghost.remove(); document.body.classList.remove('is-pin-drag');
+    suppress = true; setTimeout(function () { suppress = false; }, 50);
+    if (d.out) { togglePin(d.id); return; }
+    var order = $$('#snPins .sn--pin').map(function (b) { return b.dataset.pinItem; });
+    var snap = pinned.slice();
+    if (order.join() === snap.join()) { renderSide(); return; }
+    pinned = order; savePins(); refreshAll();
+    toast('Pins reordered', 'Undo', function () { pinned = snap; savePins(); refreshAll(); });
+  }, true);
+  document.addEventListener('pointercancel', function () { if (pd && pd.ghost) pd.ghost.remove(); pd = null; document.body.classList.remove('is-pin-drag'); renderSide(); }, true);
 
   /* ================= TOAST ================= */
   var toastTimer, toastFn;
@@ -687,7 +1032,7 @@
   function syncInert() {
     var ov = !!S.overlay && S.overlay !== 'ctx';
     setInert('#home', !!S.app || ov);
-    setInert('#statusBar', ov); setInert('#editBar', ov); setInert('#appwin', ov);
+    setInert('#statusBar', ov); setInert('#editBar', ov); setInert('#appwin', ov); setInert('#side', ov);
   }
   function closeOverlay(silent) {
     if (!S.overlay) return;
@@ -720,28 +1065,38 @@
       items.push(['Show stats', function () { openPeek(id, anchor); }, 'grid']);
       items.push(['Add Widget', function () { openGallery({ type: id, size: 'M', mode: 'add' }); }, 'plus']);
       items.push('-');
-      items.push([isPinned(id) ? 'Unpin from Dock' : 'Pin to Dock', function () { togglePin(id); }, 'pin']);
+      items.push([isPinned(id) ? 'Unpin from sidebar' : 'Pin to sidebar', function () { togglePin(id); }, 'pin']);
       if (S.removed[id]) items.push(['Add to Home Screen', function () { delete S.removed[id]; refreshAll(); toast(a.name + ' is back on its home page.'); }, 'plus']);
-      if (!isPinned(id) && !S.removed[id]) {
+      if (!S.removed[id]) {
         items.push(['Move earlier', function () { moveItem('app:' + id, -1); }, 'chevron_left']);
         items.push(['Move later', function () { moveItem('app:' + id, 1); }, 'chevron_right']);
       }
       items.push(['Edit Home Screen', function () { setEditing(true); }, 'grid']);
-      if (!isPinned(id) && !S.removed[id]) items.push(['Remove App', function () { removeCell('app:' + id); }, 'x', 1]);
+      if (!S.removed[id]) items.push(['Remove App', function () { removeCell('app:' + id); }, 'x', 1]);
     } else if (kind === 'w') {
       var f = findItem(id); if (!f) return;
       var it = f.it, stack = it.type === 'stack', type = stack ? entryType(it.items[it.idx]) : it.type;
       title = widgetLabel(it);
       if (it.type === 'item') items.push(['Open', function () { var mm = itemMeta(it.ref); if (mm) openApp(mm.go.app, mm.go); }, 'open_in_new']);
       if (stack) items.push(['Edit Stack', function () { openStackSheet(it.id); }, 'grid']);
-      else if (it.type !== 'kpi' && it.type !== 'attention') items.push(['Edit Widget', function () { openGallery({ type: it.type, ref: it.ref, size: it.size, mode: 'edit', wid: it.id }); }, 'grid']);
-      if (app(type)) items.push([isPinned(type) ? 'Unpin ' + app(type).name + ' from Dock' : 'Pin ' + app(type).name + ' to Dock', function () { togglePin(type); }, 'pin']);
+      else items.push(['Edit Widget', function () { openGallery({ type: it.type, ref: it.ref, metric: it.metric, preset: it.preset, size: it.size, mode: 'edit', wid: it.id }); }, 'grid']);
+      if (!stack && DASHW[it.type]) items.push(['Open ' + app(dashOpen(it)).name, function () { openApp(dashOpen(it)); }, 'open_in_new']);
+      var pm = DASHW[type] ? (type === 'kpi' || type === 'action' || type === 'trend' ? dashOpen(it) : DASHW[type].open) : app(type) ? type : null;
+      if (pm && app(pm)) items.push([isPinned(pm) ? 'Unpin ' + app(pm).name + ' from sidebar' : 'Pin ' + app(pm).name + ' to sidebar', function () { togglePin(pm); }, 'pin']);
       items.push(['Move earlier', function () { moveItem('w:' + it.id, -1); }, 'chevron_left']);
       items.push(['Move later', function () { moveItem('w:' + it.id, 1); }, 'chevron_right']);
+      if (f.p === 0) items.push([it.zone === 'side' ? 'Move to main area' : 'Move to right column', function () { moveZone(it.id); }, it.zone === 'side' ? 'west' : 'east']);
       if (it.type === 'item') items.push(['Remove from Focus Hub', function () { unsaveItem(it.ref); }, 'bookmark_remove']);
       items.push(['Edit Home Screen', function () { setEditing(true); }, 'grid']);
       items.push(['-']);
       items.push([stack ? 'Remove Stack' : 'Remove Widget', function () { removeCell('w:' + id); }, 'x', 1]);
+    } else if (kind === 'pin') {
+      var pa = app(id); title = pa.name + ' (pinned)';
+      items = [['Open ' + pa.name, function () { openApp(id); }, 'open_in_new'],
+               ['Move up', function () { movePin(id, -1); }, 'arrow_upward'],
+               ['Move down', function () { movePin(id, 1); }, 'arrow_downward'],
+               '-',
+               ['Unpin from sidebar', function () { togglePin(id); var n = $('#snPins .sn') || $('[data-act="pinPicker"]'); if (n) n.focus(); }, 'keep_off', 1]];
     } else if (kind === 'item') {
       var im = itemMeta(id); if (!im) return;
       title = im.t;
@@ -840,28 +1195,33 @@
       var q = (root._galQ || '').toLowerCase();
       var list = WTYPES.filter(function (t) { return !q || (app(t).name + ' ' + app(t).sub).toLowerCase().indexOf(q) > -1; });
       var savedKeys = Object.keys(SAVE).filter(function (k) { var m = SAVE[k]; return (m.liked || m.bm) && (!q || (m.t + ' ' + m.type).toLowerCase().indexOf(q) > -1); });
+      var dashList = galDashEntries().filter(function (d) { return !q || (dashName(d) + ' ' + DASHW[d.type].desc).toLowerCase().indexOf(q) > -1; });
+      var dashHtml = dashList.length ? '<li class="gal-sec">Command Centre</li>' + dashList.map(function (d) {
+        return '<li class="gcell"><button type="button" class="gtile" data-act="galPick" data-t="' + d.type + '"' + (d.metric ? ' data-metric="' + d.metric + '"' : '') + (d.preset ? ' data-preset="' + d.preset + '"' : '') + '><span class="gprev" aria-hidden="true">' + dashPreview(d) + '</span><b>' + esc(dashName(d)) + '</b><small>' + esc(DASHW[d.type].name) + '</small></button></li>';
+      }).join('') : '';
       html = '<div class="sheet__grip" aria-hidden="true"></div><div class="sheet__hd"><h2 id="galH">Add widgets</h2><button type="button" class="icon-btn" data-act="closeOverlay" aria-label="Close"><span class="material-symbols-outlined ico" aria-hidden="true">close</span></button></div>' +
         '<label class="search search--pill"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">search</span><span class="vh">Search widgets</span><input type="search" id="galQ" placeholder="Search Widgets" value="' + esc(root._galQ || '') + '"></label>' +
         '<p class="muted" style="margin-top:10px;font-size:13px">Every module has a stats widget in Small, Medium and Large. ' + list.length + ' of ' + WTYPES.length + ' shown.</p>' +
-        '<ul class="gal-grid" id="galGrid">' +
+        '<ul class="gal-grid" id="galGrid">' + dashHtml +
         (savedKeys.length ? '<li class="gal-sec" id="galFocus">From Focus Hub</li>' + savedKeys.map(function (k) {
           return '<li class="gcell"><button type="button" class="gtile" data-act="galPick" data-t="item" data-ref="' + k + '"><span class="gprev" aria-hidden="true">' + widgetBody('item', 'S', { ref: k }) + '</span><b>' + esc(SAVE[k].t) + '</b><small>' + esc(SAVE[k].type) + ' · saved</small></button></li>';
-        }).join('') + '<li class="gal-sec">Modules</li>' : '') + list.map(function (t) {
+        }).join('') : '') + '<li class="gal-sec">Modules</li>' + list.map(function (t) {
           return '<li class="gcell"><button type="button" class="gtile" data-act="galPick" data-t="' + t + '"><span class="gprev" aria-hidden="true">' + widgetBody(t, 'S') + '</span><b>' + esc(app(t).name) + '</b><small>' + esc(app(t).sub) + '</small></button></li>';
         }).join('') + '</ul>' + (list.length ? '' : '<p class="muted" style="margin-top:14px">No widgets match.</p>');
     } else {
-      var isItem = gal.type === 'item', im = isItem ? itemMeta(gal.ref) : null;
-      var a = isItem ? itemApp(im) : app(gal.type), sizes = SZ.slice(0, maxSz() + 1);
-      var gTitle = isItem ? im.t : a.name, gDesc = isItem ? 'Your saved ' + im.type.toLowerCase() + ' from Focus Hub, kept on the Home Screen. Tap it to open it.' : (a.description || a.sub + ': key stats at a glance.');
-      var avail = stacks().filter(function (x) { return !x.items.some(function (e) { return isItem ? (e && e.ref === gal.ref) : e === gal.type; }); });
+      var isItem = gal.type === 'item', im = isItem ? itemMeta(gal.ref) : null, isDash = !!DASHW[gal.type];
+      var a = isItem ? itemApp(im) : isDash ? app(dashOpen(gal)) : app(gal.type), sizes = sizesFor(galCtx());
+      if (sizes.indexOf(gal.size) < 0) gal.size = eff(gal.size, galCtx());
+      var gTitle = isItem ? im.t : isDash ? dashName(gal) : a.name, gDesc = isItem ? 'Your saved ' + im.type.toLowerCase() + ' from Focus Hub, kept on the Home Screen. Tap it to open it.' : isDash ? DASHW[gal.type].desc : (a.description || a.sub + ': key stats at a glance.');
+      var avail = isDash ? [] : stacks().filter(function (x) { return !x.items.some(function (e) { return isItem ? (e && e.ref === gal.ref) : e === gal.type; }); });
       var canStack = gal.mode === 'add' && avail.length;
       html = '<div class="sheet__grip" aria-hidden="true"></div><div class="sheet__hd">' +
         (gal.mode === 'add' ? '<button type="button" class="icon-btn" data-act="galBack" aria-label="Back to all widgets"><span class="material-symbols-outlined ico" aria-hidden="true">chevron_left</span></button>' : '') +
         '<span class="app__ic" ' + tileStyle(a, '--ic:30px') + ' aria-hidden="true">' + glyph(a) + '</span><h2 id="galH">' + esc(gTitle) + '</h2><button type="button" class="icon-btn" data-act="closeOverlay" aria-label="Close"><span class="material-symbols-outlined ico" aria-hidden="true">close</span></button></div>' +
         '<div class="gdet"><h3>' + esc(gTitle) + '</h3><p>' + esc(gDesc) + '</p>' +
-        '<div class="gstage"><button type="button" class="icon-btn" data-act="galSize" data-d="-1" aria-label="Smaller size"' + (gal.size === 'S' ? ' disabled' : '') + '><span class="material-symbols-outlined ico" aria-hidden="true">chevron_left</span></button>' +
-        '<div class="wg wg--' + gal.size + '" aria-hidden="true"><span class="wg__btn">' + widgetBody(gal.type, gal.size === 'XL' ? 'L' : gal.size, { ref: gal.ref }) + '</span></div>' +
-        '<button type="button" class="icon-btn" data-act="galSize" data-d="1" aria-label="Larger size"' + (gal.size === 'L' ? ' disabled' : '') + '><span class="material-symbols-outlined ico" aria-hidden="true">chevron_right</span></button></div>' +
+        '<div class="gstage"><button type="button" class="icon-btn" data-act="galSize" data-d="-1" aria-label="Smaller size"' + (gal.size === sizes[0] ? ' disabled' : '') + '><span class="material-symbols-outlined ico" aria-hidden="true">chevron_left</span></button>' +
+        '<div class="wg wg--' + gal.size + (isDash ? ' wg--' + gal.type : '') + '" aria-hidden="true" inert><span class="wg__btn' + (isDash ? ' wg__body' : '') + '">' + widgetBody(gal.type, isDash ? gal.size : gal.size === 'XL' ? 'L' : gal.size === 'W' ? 'M' : gal.size, { ref: gal.ref, metric: gal.metric, preset: gal.preset, period: 12 }) + '</span></div>' +
+        '<button type="button" class="icon-btn" data-act="galSize" data-d="1" aria-label="Larger size"' + (gal.size === sizes[sizes.length - 1] ? ' disabled' : '') + '><span class="material-symbols-outlined ico" aria-hidden="true">chevron_right</span></button></div>' +
         '<div class="gdots" aria-hidden="true">' + sizes.map(function (s) { return '<span class="' + (s === gal.size ? 'on' : '') + '"></span>'; }).join('') + '</div>' +
         '<div class="gsizes" role="group" aria-label="Widget size" id="galSizes">' + sizes.map(function (s) { return '<button type="button" data-act="galSet" data-s="' + s + '" aria-pressed="' + (s === gal.size) + '">' + SZ_NAME[s] + '</button>'; }).join('') + '</div>' +
         (canStack ? '<div class="gstack" id="galStack" role="group" aria-label="Where to add it"><button type="button" class="chip" data-act="galStack" data-w="" aria-pressed="' + !gal.toStack + '">On its own</button>' +
@@ -872,6 +1232,24 @@
     var qi = $('#galQ');
     if (qi) qi.addEventListener('input', function (e) { root._galQ = e.target.value; var pos = e.target.selectionStart; renderGallery(); var n = $('#galQ'); n.focus(); n.setSelectionRange(pos, pos); });
     if (!root.contains(document.activeElement)) { var f = $('.sheet button, .sheet input', root); if (f) f.focus(); }
+  }
+  /* where a widget being added or edited will sit, so the size picker offers that place's sizes */
+  function galCtx() {
+    if (gal && gal.mode === 'edit') { var f = findItem(gal.wid); if (f) return ctxOf(f.it); }
+    return S.page === 0 && !S.lib ? 'main' : 'sb';
+  }
+  /* small gallery tile previews: KPI and quick-action cards draw themselves; larger panels show an icon */
+  var DASH_ICON = { hero: 'pets', trend: 'show_chart', activity: 'history', planning: 'checklist', attention: 'priority_high', sites: 'location_on', team: 'groups', helpcard: 'support_agent' };
+  function dashPreview(d) {
+    if (d.type === 'kpi' || d.type === 'action') return widgetBody(d.type, 'S', d);
+    return '<span class="gprev__dash gprev__dash--' + d.type + '"><span class="material-symbols-outlined">' + DASH_ICON[d.type] + '</span></span>';
+  }
+  function galDashEntries() {
+    var out = [{ type: 'hero' }, { type: 'trend', metric: 'health' }];
+    (DATA ? DATA.kpis : []).forEach(function (k) { out.push({ type: 'kpi', metric: k }); });
+    Object.keys(ACTIONS).forEach(function (k) { out.push({ type: 'action', preset: k }); });
+    ['activity', 'planning', 'attention', 'sites', 'team', 'helpcard'].forEach(function (t) { out.push({ type: t }); });
+    return out;
   }
   function openStackSheet(wid) {
     closeOverlay(true); opener = document.activeElement; S.overlay = 'stack';
@@ -990,7 +1368,7 @@
   function openApp(id, o, originEl) {
     o = o || {};
     var a = app(id); if (!a) return;
-    closeOverlay(true);
+    closeOverlay(true); if (S.drawer) closeDrawer(true);
     if (S.editing) { S.editing = false; ui.classList.remove('editing'); renderHome(); }
     var wasOpen = !!S.app;
     S.app = id;
@@ -1006,7 +1384,7 @@
     $('#appIc').innerHTML = glyph(a);
     $('#appIc').setAttribute('style', tileStyle(a).slice(7, -1));
     $('#appPin').dataset.pin = id; $('#appPin').setAttribute('aria-pressed', String(isPinned(id)));
-    $('#appPin').setAttribute('aria-label', 'Keep ' + a.name + ' in Dock');
+    $('#appPin').setAttribute('aria-label', 'Pin ' + a.name + ' to the sidebar');
     $('#appMore').dataset.more = 'app:' + id; $('#appMore').setAttribute('aria-label', 'More options for ' + a.name);
     var aw = $('#appwin');
     aw.hidden = false; ui.classList.add('app-open');
@@ -1017,15 +1395,16 @@
     }
     if (SCREENS[id]) SCREENS[id].open(o);
     $('#appBody').scrollTop = 0;
-    updateAppHeader(); syncInert();
+    updateAppHeader(); syncInert(); renderSide();
     $('#appTitle').focus({ preventScroll: true });
     updateTitle();
   }
-  function closeApp() {
+  function closeApp(silent) {
     if (!S.app) return;
     var id = S.app; S.app = null;
     $('#appwin').hidden = true; ui.classList.remove('app-open'); $('#appwin').classList.remove('is-thread');
-    syncInert();
+    syncInert(); renderSide();
+    if (silent) { updateTitle(); return; }
     var cand = $$('[data-open="' + id + '"]').filter(function (b) { return !b.closest('[inert]') && b.getClientRects().length; })[0];
     (cand || $('#hSearch')).focus({ preventScroll: true });
     updateTitle();
@@ -1282,7 +1661,7 @@
     clearInterval(rotTimer);
     if (S.smartRotate && !reduceMotion) rotTimer = setInterval(function () {
       var ae = document.activeElement;
-      if (S.app || S.overlay || S.editing || (ae && ae.closest && ae.closest('.wg--stack'))) return;
+      if (S.app || S.overlay || S.editing || S.drawer || pd || dg || (ae && ae.closest && ae.closest('.wg--stack'))) return;
       stacks().forEach(function (st) { st.idx = (st.idx + 1) % st.items.length; });
       renderHome();
     }, 9000);
@@ -1299,7 +1678,7 @@
     quick: function () { openSpot(); },
     nc: function () { openNC(); },
     search: function () { openSpot(); },
-    library: function () { setPage(S.nPages); $('#libQ').focus({ preventScroll: true }); },
+    library: function () { navPage('lib'); },
     libCancel: function () { S.libQ = ''; $('#libQ').value = ''; renderLibrary(); setPage(0); },
     az: function (el) { var t = $('#lib-' + el.dataset.l); if (t) t.scrollIntoView({ block: 'start' }); },
     edit: function () { setEditing(true); },
@@ -1314,20 +1693,24 @@
     peekAdd: function (el) { openGallery({ type: el.dataset.id, size: 'M', mode: 'add' }); },
     closeOverlay: function () { closeOverlay(); },
     closeOverlayBg: function (el, e) { if (e.target === el) closeOverlay(); },
-    galPick: function (el) { gal = { type: el.dataset.t, ref: el.dataset.ref, size: 'M', mode: 'add', toStack: S.pendingStack || '' }; renderGallery(); updateTitle(); },
+    galPick: function (el) { var t = el.dataset.t; gal = { type: t, ref: el.dataset.ref, metric: el.dataset.metric, preset: el.dataset.preset, size: DASHW[t] ? DASHW[t].def : 'M', mode: 'add', toStack: DASHW[t] ? '' : S.pendingStack || '' }; renderGallery(); updateTitle(); },
     galBack: function () { gal = null; renderGallery(); },
-    galSize: function (el) { var s = SZ.slice(0, maxSz() + 1), i = s.indexOf(gal.size) + +el.dataset.d; gal.size = s[Math.max(0, Math.min(s.length - 1, i))]; renderGallery(); var b = $('[data-act="galSize"][data-d="' + el.dataset.d + '"]'); if (b && !b.disabled) b.focus(); else $('#galSizes [aria-pressed="true"]').focus(); },
+    galSize: function (el) { var s = sizesFor(galCtx()), i = s.indexOf(gal.size) + +el.dataset.d; gal.size = s[Math.max(0, Math.min(s.length - 1, i))]; renderGallery(); var b = $('[data-act="galSize"][data-d="' + el.dataset.d + '"]'); if (b && !b.disabled) b.focus(); else $('#galSizes [aria-pressed="true"]').focus(); },
     galSet: function (el) { gal.size = el.dataset.s; renderGallery(); $('#galSizes [data-s="' + el.dataset.s + '"]').focus(); },
     galStack: function (el) { gal.toStack = el.dataset.w; renderGallery(); var b = $('[data-act="galStack"][data-w="' + el.dataset.w + '"]'); if (b) b.focus(); },
     galAdd: function () {
       if (gal.mode === 'edit') { closeOverlay(true); setSize(gal.wid, gal.size); return; }
-      var isItem = gal.type === 'item', name = isItem ? entryName({ ref: gal.ref }) : app(gal.type).name, sf = gal.toStack ? findItem(gal.toStack) : null;
+      var isItem = gal.type === 'item', name = isItem ? entryName({ ref: gal.ref }) : DASHW[gal.type] ? dashName(gal) : app(gal.type).name, sf = gal.toStack ? findItem(gal.toStack) : null;
       var snap = snapshot();
       S.pendingStack = '';
       if (sf) { var st = sf.it; st.items.push(isItem ? { type: 'item', ref: gal.ref } : gal.type); st.idx = st.items.length - 1; toast(name + ' added to the ' + st.name + ' stack', 'Undo', function () { restore(snap); }); }
       else {
-        var pg = placeNew(isItem ? { k: 'w', id: newId(), type: 'item', ref: gal.ref, size: gal.size } : { k: 'w', id: newId(), type: gal.type, size: gal.size });
-        toast(name + ' widget added to page ' + (pg + 1), 'Undo', function () { restore(snap); });
+        var nw = isItem ? { k: 'w', id: newId(), type: 'item', ref: gal.ref, size: gal.size } : { k: 'w', id: newId(), type: gal.type, size: gal.size };
+        if (gal.metric) nw.metric = gal.metric;
+        if (gal.preset) nw.preset = gal.preset;
+        if (gal.type === 'trend') nw.period = 12;
+        var pg = placeNew(nw);
+        toast(name + ' widget added to ' + (pg === 0 ? 'the Command Centre' : 'page ' + (pg + 1)), 'Undo', function () { restore(snap); });
       }
       saveLayout();
       closeOverlay(true); renderHome(); updateTitle();
@@ -1346,7 +1729,14 @@
       openApp(g.app, o);
     },
     nClear: function () { NOTIFS.length = 0; $('#bellBtn .badge').hidden = true; $('#bellBtn').setAttribute('aria-label', 'Notification Center'); renderNC(); },
-    home: function () { closeApp(); },
+    home: function () { closeApp(true); navPage(0); },
+    navPage: function (el) { navPage(el.dataset.p); },
+    drawer: function () { if (S.drawer) closeDrawer(); else openDrawer(); },
+    drawerClose: function () { closeDrawer(); },
+    sideToggle: function () { try { localStorage.setItem(SIDE_KEY, sideExpanded() ? 'rail' : 'open'); } catch (e) { /* storage blocked */ } applySideMode(); $('#sideToggle').focus(); },
+    pinPicker: function () { openPicker(); },
+    reportBug: function () { openApp('help', { form: 1 }); },
+    heroScan: function () { toast('Scan · point the camera at a tag, enclosure QR or microchip reader.'); },
     appBack: function () { if (backFn) backFn(); },
     lvl: function (el) { var o = {}; if (el.dataset.species != null) o.species = +el.dataset.species; if (el.dataset.animal != null) o.animal = +el.dataset.animal; setLevel(el.dataset.level, o); focusLevel(); },
     noteColl: function (el) { S.noteColl = el.dataset.coll; renderNotesScreen(); refocus('[data-act="noteColl"][data-coll="' + el.dataset.coll + '"]'); },
@@ -1371,18 +1761,18 @@
     if (!h || !S.editing || e.button > 0) return;
     e.preventDefault(); e.stopPropagation(); clearTimeout(lpTimer); drag = null;
     var w = h.closest('.wg'), f = findItem(h.dataset.resize); if (!f) return;
-    var g = w.parentElement, gs = getComputedStyle(g), cols = gridCols();
+    var g = w.parentElement, gs = getComputedStyle(g), cols = gs.gridTemplateColumns.split(' ').length, ctx = ctxOf(f.it);
     var gx = parseFloat(gs.columnGap) || 0, gy = parseFloat(gs.rowGap) || 0;
     var cw = (g.clientWidth - (cols - 1) * gx) / cols, rh = parseFloat(gs.gridAutoRows) || 90;
     var r = w.getBoundingClientRect(), ur = ui.getBoundingClientRect();
-    rz = { id: f.it.id, from: eff(f.it.size), size: eff(f.it.size), x: r.left, y: r.top, ox: ur.left, oy: ur.top, cw: cw, rh: rh, gx: gx, gy: gy, cols: cols, el: w };
+    rz = { id: f.it.id, ctx: ctx, from: eff(f.it.size, ctx), size: eff(f.it.size, ctx), x: r.left, y: r.top, ox: ur.left, oy: ur.top, cw: cw, rh: rh, gx: gx, gy: gy, cols: cols, el: w };
     w.classList.add('is-resizing');
     var gh = document.createElement('div'); gh.className = 'rs-ghost'; gh.setAttribute('aria-hidden', 'true'); gh.innerHTML = '<span></span>'; ui.appendChild(gh); rz.gh = gh;
     try { h.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     drawGhost();
   }, true);
   function drawGhost() {
-    var sp = SPAN[rz.size], c = Math.min(sp[0], rz.cols);
+    var sp = spansFor(rz.ctx)[rz.size], c = Math.min(sp[0], rz.cols);
     rz.gh.style.left = (rz.x - rz.ox) + 'px'; rz.gh.style.top = (rz.y - rz.oy) + 'px';
     rz.gh.style.width = (c * rz.cw + (c - 1) * rz.gx) + 'px'; rz.gh.style.height = (sp[1] * rz.rh + (sp[1] - 1) * rz.gy) + 'px';
     rz.gh.firstChild.textContent = SZ_NAME[rz.size];
@@ -1390,7 +1780,9 @@
   document.addEventListener('pointermove', function (e) {
     if (!rz) return;
     var fx = (e.clientX - rz.x + rz.gx) / (rz.cw + rz.gx), fy = (e.clientY - rz.y + rz.gy) / (rz.rh + rz.gy);
-    var s2 = (fx < 3 && fy < 3) ? 'S' : fy < 3 ? 'M' : (fx >= 6.5 && maxSz() >= 3) ? 'XL' : 'L';
+    /* snap to the allowed size whose span is nearest the pointer */
+    var sp = spansFor(rz.ctx), s2 = rz.size, best = 1e9;
+    sizesFor(rz.ctx).forEach(function (s) { var c = Math.min(sp[s][0], rz.cols), d = (fx - c) * (fx - c) + (fy - sp[s][1]) * (fy - sp[s][1]); if (d < best) { best = d; s2 = s; } });
     if (s2 !== rz.size) { rz.size = s2; drawGhost(); }
   }, true);
   function endResize(cancel) {
@@ -1406,33 +1798,50 @@
 
   /* ================= REORDER =================
      Edit mode: press and drag any icon or widget. A lifted ghost follows the pointer, the grid
-     shifts live to show the drop slot, holding at a screen edge for ~0.5 s changes page, the dock
-     pins/unpins apps, and dropping a widget on the middle of a stack adds it to the stack.
+     shifts live to show the drop slot, holding at a screen edge for ~0.5 s changes page, dropping on the
+     sidebar pins the module, and dropping a widget on the middle of a stack adds it to the stack.
      Keyboard: Alt + arrow keys on an item, or Move earlier / later in its ⋯ menu. */
   function itemKey(x) { return (x.k === 'a' ? 'app:' : 'w:') + x.id; }
-  function isHidden(x) { return x.k === 'a' && (isPinned(x.id) || S.removed[x.id]); }
+  function isHidden(x) { return x.k === 'a' && S.removed[x.id]; }
+  /* keyboard move: within the same dashboard area (main / right column), else across springboard pages */
   function moveItem(key, dir) {
-    var flat = [];
-    PAGES.forEach(function (pg, p) { pg.forEach(function (x, i) { if (!isHidden(x)) flat.push({ p: p, i: i, x: x }); }); });
+    var flat = [], at0 = null;
+    PAGES.forEach(function (pg, p) { pg.forEach(function (x, i) { if (itemKey(x) === key) at0 = { p: p, x: x }; }); });
+    if (!at0) return;
+    var dashZone = at0.p === 0 ? (at0.x.zone || 'main') : null;
+    PAGES.forEach(function (pg, p) {
+      pg.forEach(function (x, i) {
+        if (isHidden(x)) return;
+        if (dashZone !== null ? (p === 0 && (x.zone || 'main') === dashZone) : p > 0) flat.push({ p: p, i: i, x: x });
+      });
+    });
     var at = flat.map(function (f) { return itemKey(f.x); }).indexOf(key);
-    if (at < 0) { toast('Pinned apps are ordered in the Dock'); return; }
     var to = at + dir;
     if (to < 0 || to >= flat.length) { toast(dir < 0 ? 'Already first' : 'Already last'); return; }
     var snap = snapshot(), a = flat[at], b = flat[to];
     if (a.p === b.p) { PAGES[a.p][a.i] = b.x; PAGES[b.p][b.i] = a.x; }
     else { PAGES[a.p].splice(a.i, 1); if (dir > 0) PAGES[b.p].splice(0, 0, a.x); else PAGES[b.p].push(a.x); }
-    PAGES = PAGES.filter(function (pg) { return pg.length; });
+    PAGES = PAGES.filter(function (pg, i) { return i === 0 || pg.length; });
     saveLayout(); renderHome();
-    var cell = $('[data-cell="' + key + '"]');
-    if (cell) { var pgEl = cell.closest('.page'); if (pgEl) setPage(+pgEl.dataset.page); var fb = cell.querySelector('button'); if (fb) fb.focus({ preventScroll: true }); }
+    var cell = $('#homePages [data-cell="' + key + '"]');
+    if (cell) { var pgEl = cell.closest('.page'); if (pgEl) setPage(+pgEl.dataset.page); var fb = cell.querySelector('button'); if (fb) fb.focus({ preventScroll: false }); }
     toast('Moved ' + (dir < 0 ? 'earlier' : 'later'), 'Undo', function () { restore(snap); });
+  }
+  /* keyboard alternative to dragging between the dashboard's main area and right column */
+  function moveZone(wid) {
+    var f = findItem(wid); if (!f || f.p !== 0) return;
+    var snap = snapshot(), to = f.it.zone === 'side' ? 'main' : 'side';
+    if (to === 'side') f.it.zone = 'side'; else delete f.it.zone;
+    saveLayout(); renderHome();
+    var c = $('#homePages [data-cell="w:' + wid + '"] button'); if (c) c.focus();
+    toast('Moved to the ' + (to === 'side' ? 'right column' : 'main area'), 'Undo', function () { restore(snap); });
   }
 
   var dg = null, pend = null, press = null;
   var DRAG_THRESHOLD = 6;
   function dragCandidate(t) {
-    if (!t || !t.closest || t.closest('.rs, .rm, .pin-b, .more, .app__more, .stack-dots')) return null;
-    return t.closest('#homePages [data-cell], #dock [data-cell]');
+    if (!t || !t.closest || t.closest('.rs, .rm, .pin-b, .more, .app__more, .stack-dots, select')) return null;
+    return t.closest('#homePages [data-cell]');
   }
   function beginDrag(cell, e) {
     var r = cell.getBoundingClientRect();
@@ -1441,44 +1850,56 @@
     ghost.style.width = r.width + 'px'; ghost.style.height = r.height + 'px';
     document.body.appendChild(ghost);
     cell.classList.add('is-drag-src');
-    ui.classList.add('is-dragging');
-    dg = { key: cell.dataset.cell, el: cell, ghost: ghost, dx: e.clientX - r.left, dy: e.clientY - r.top, snap: snapshot(), edgeDir: 0, edgeTimer: null, merge: null, last: null, dockFull: false,
-      fromDock: !!cell.closest('#dock'), wasFixed: cell.hasAttribute('data-fixed') };
+    ui.classList.add('is-dragging'); document.body.classList.add('is-dragging');
+    dg = { key: cell.dataset.cell, el: cell, ghost: ghost, dx: e.clientX - r.left, dy: e.clientY - r.top, snap: snapshot(), edgeDir: 0, edgeTimer: null, merge: null, last: null, pin: null, scroll: 0, scrollTimer: null };
     clearTimeout(lpTimer); drag = null;
     moveDrag(e);
   }
+  /* which module a dragged cell would pin: an app icon, or a module / quick-action / KPI widget */
+  function dragModule(key) {
+    if (key.indexOf('app:') === 0) return key.slice(4);
+    var f = findItem(key.slice(2)); if (!f) return null;
+    var it = f.it, t = it.type === 'stack' ? entryType(it.items[it.idx]) : it.type;
+    if (DASHW[t]) return t === 'kpi' || t === 'action' || t === 'trend' ? dashOpen(it) : DASHW[t].open || null;
+    return app(t) ? t : null;
+  }
   function moveDrag(e) {
     dg.ghost.style.transform = 'translate(' + (e.clientX - dg.dx) + 'px,' + (e.clientY - dg.dy) + 'px) scale(1.05)';
-    edgePaging(e);
+    edgePaging(e); edgeScroll(e);
     var under = document.elementFromPoint(e.clientX, e.clientY);
-    var isApp = dg.key.indexOf('app:') === 0, dock = $('#dock');
-    setMerge(null); dock.classList.remove('is-drop'); dg.dockFull = false;
+    var pins = $('#snPins');
+    setMerge(null); pins.classList.remove('is-drop'); dg.pin = null;
     if (!under) return;
-    if (under.closest('#dock')) {
-      if (!isApp) return;
-      var inDock = $$('#dock [data-cell]').filter(function (c) { return c !== dg.el; }).length;
-      if (dg.el.parentElement !== dock && inDock >= dockLimit()) { dg.dockFull = true; return; }
-      dock.classList.add('is-drop');
-      var dt = under.closest('#dock [data-cell]');
-      if (dt && dt !== dg.el) insertBy(dt, e);
-      else if (!dt && dg.el.parentElement !== dock) dock.insertBefore(dg.el, dock.querySelector('.dock-slot, .dock-empty'));
+    /* onto the sidebar's Pinned section: pin that module (the icon or widget stays where it was) */
+    if (under.closest('#side')) {
+      var mod = dragModule(dg.key);
+      if (mod) { pins.classList.add('is-drop'); dg.pin = mod; }
       return;
     }
     var page = under.closest('.page.is-current'); if (!page || page.id === 'libPage') return;
+    var isApp = dg.key.indexOf('app:') === 0;
     var t = under.closest('[data-cell]');
     if (t && t !== dg.el && t.parentElement && t.parentElement.classList.contains('sb-grid')) {
-      if (t.classList.contains('wg--stack') && !isApp && !dg.el.classList.contains('wg--stack')) {
+      if (t.classList.contains('wg--stack') && !isApp && !dg.el.classList.contains('wg--stack') && !DASHW[(findItem(dg.key.slice(2)) || { it: {} }).it.type]) {
         var r = t.getBoundingClientRect();
         if (Math.abs(e.clientX - (r.left + r.width / 2)) < r.width * 0.25 && Math.abs(e.clientY - (r.top + r.height / 2)) < r.height * 0.25) { setMerge(t); return; }
       }
       insertBy(t, e);
     } else if (!t) {
-      var grid = $('.sb-grid', page);
+      var grid = under.closest('.sb-grid') || $('.sb-grid', page);
       if (grid && grid.lastElementChild !== dg.el) { grid.appendChild(dg.el); dg.last = null; }
     }
   }
+  /* the dashboard scrolls: hold near its top or bottom edge while dragging to scroll it */
+  function edgeScroll(e) {
+    var pg = $('.page.is-current'); if (!pg) return;
+    var r = pg.getBoundingClientRect(), dir = e.clientY < r.top + 48 ? -1 : e.clientY > r.bottom - 48 ? 1 : 0;
+    dg.scroll = dir;
+    if (dir && !dg.scrollTimer) dg.scrollTimer = setInterval(function () { if (!dg || !dg.scroll) return; pg.scrollTop += dg.scroll * 14; }, 16);
+  }
   function insertBy(t, e) {
     var r = t.getBoundingClientRect(), before = e.clientX < r.left + r.width / 2;
+    if (r.width > t.parentElement.clientWidth * 0.75) before = e.clientY < r.top + r.height / 2;
     var sig = t.dataset.cell + (before ? '<' : '>');
     if (dg.last === sig) return;
     dg.last = sig;
@@ -1488,7 +1909,7 @@
   function edgePaging(e) {
     var pw = $('#pagesWrap').getBoundingClientRect();
     var inY = e.clientY > pw.top && e.clientY < pw.bottom;
-    var dir = !inY ? 0 : e.clientX < pw.left + 40 ? -1 : e.clientX > pw.right - 40 ? 1 : 0;
+    var dir = !inY ? 0 : e.clientX < pw.left + 24 && e.clientX >= pw.left ? -1 : e.clientX > pw.right - 24 ? 1 : 0;
     if (dir === dg.edgeDir) return;
     clearTimeout(dg.edgeTimer); dg.edgeDir = dir;
     if (dir) dg.edgeTimer = setTimeout(function () { flipPage(dir); }, 500);
@@ -1503,46 +1924,45 @@
     }
     setPage(target);
     var grid = $('.page.is-current .sb-grid'); if (grid && dg.el.closest('#homePages')) { grid.appendChild(dg.el); dg.last = null; }
-    dg.edgeDir = 0; dg.edgeTimer = setTimeout(function () { if (dg && dg.edgeDir === 0) dg.edgeDir = 0; }, 0);
+    dg.edgeDir = 0;
   }
+  /* the DOM order after a drag becomes the layout; a cell's grid sets its dashboard area */
   function commitFromDom() {
     var byKey = {}, home = {};
     PAGES.forEach(function (pg, p) { pg.forEach(function (x) { byKey[itemKey(x)] = x; home[itemKey(x)] = p; }); });
-    var draggedApp = dg.key.indexOf('app:') === 0 ? dg.key.slice(4) : null;
-    var inDock = !!dg.el.closest('#dock');
-    var dockIds = $$('#dock [data-cell]').map(function (c) { return c.dataset.cell.slice(4); });
-    var fixedIds = $$('#homePages [data-fixed]').filter(function (c) { return c !== dg.el; }).map(function (c) { return c.dataset.cell.slice(4); });
-    var newPinned = dockIds.concat(fixedIds.filter(function (id) { return dockIds.indexOf(id) < 0; }));
-    if (draggedApp && !inDock) newPinned = newPinned.filter(function (id) { return id !== draggedApp; });
-    if (newPinned.length > MAX_PINS) { toast('Up to ' + MAX_PINS + ' pins. Unpin a module first.'); return false; }
-    var pages = $$('#homePages .sb-grid').map(function (g) {
-      return $$('[data-cell]', g).filter(function (c) { return c.parentElement === g && !c.hasAttribute('data-fixed') || c === dg.el && !inDock; })
-        .map(function (c) { return byKey[c.dataset.cell] || (c.dataset.cell.indexOf('app:') === 0 ? { k: 'a', id: c.dataset.cell.slice(4) } : null); })
-        .filter(Boolean);
+    var pages = $$('#homePages .page').map(function (sec, pi) {
+      var out = [];
+      $$('.sb-grid', sec).forEach(function (g) {
+        $$('[data-cell]', g).filter(function (c) { return c.parentElement === g; }).forEach(function (c) {
+          var x = byKey[c.dataset.cell] || (c.dataset.cell.indexOf('app:') === 0 ? { k: 'a', id: c.dataset.cell.slice(4) } : null);
+          if (!x) return;
+          if (pi === 0 && g.dataset.zone === 'side') x.zone = 'side'; else delete x.zone;
+          out.push(x);
+        });
+      });
+      return out;
     });
-    /* keep hidden apps (pinned or removed) in the model, on the page they came from */
+    /* keep hidden (removed) apps in the model, on the page they came from */
     var seen = {};
     pages.forEach(function (pg) { pg.forEach(function (x) { seen[itemKey(x)] = 1; }); });
     Object.keys(byKey).forEach(function (k) {
-      if (seen[k]) return;
-      var x = byKey[k];
-      if (dg.merge && k === dg.key) return;
+      if (seen[k] || (dg.merge && k === dg.key)) return;
       var p = Math.min(home[k], pages.length - 1);
-      (pages[p] || pages[pages.length - 1]).push(x);
+      (pages[p] || pages[pages.length - 1]).push(byKey[k]);
     });
-    PAGES = pages.filter(function (pg) { return pg.length; });
-    pinned = newPinned;
+    PAGES = pages.filter(function (pg, i) { return i === 0 || pg.length; });
     return true;
   }
   function endDrag(cancel) {
     if (!dg) return;
     var d = dg; dg = null;
-    clearTimeout(d.edgeTimer);
-    d.ghost.remove(); d.el.classList.remove('is-drag-src'); ui.classList.remove('is-dragging'); $('#dock').classList.remove('is-drop');
+    clearTimeout(d.edgeTimer); clearInterval(d.scrollTimer);
+    d.ghost.remove(); d.el.classList.remove('is-drag-src'); ui.classList.remove('is-dragging'); document.body.classList.remove('is-dragging'); $('#snPins').classList.remove('is-drop');
     if (d.merge) d.merge.classList.remove('is-merge-target');
     suppress = true; setTimeout(function () { suppress = false; }, 50);
     if (cancel) { restore(d.snap); toast('Move cancelled'); return; }
-    if (d.dockFull) toast('The Dock is full (' + dockLimit() + '). Unpin an app first.');
+    /* dropped on the sidebar: pin the module, leave the layout as it was */
+    if (d.pin) { restore(d.snap); if (isPinned(d.pin)) toast(app(d.pin).name + ' is already pinned.'); else togglePin(d.pin); return; }
     dg = d;
     var merged = false;
     if (d.merge) {
@@ -1551,7 +1971,7 @@
         sf.it.items.push(wf.it.type === 'item' ? { type: 'item', ref: wf.it.ref } : wf.it.type);
         sf.it.idx = sf.it.items.length - 1;
         PAGES[wf.p].splice(wf.i, 1);
-        PAGES = PAGES.filter(function (pg) { return pg.length; });
+        PAGES = PAGES.filter(function (pg, i) { return i === 0 || pg.length; });
         merged = true;
       }
     }
@@ -1580,7 +2000,7 @@
     if (press && press.lp && (Math.abs(e.clientX - press.x) > 10 || Math.abs(e.clientY - press.y) > 10)) {
       var key = press.key; press = null;
       closeOverlay(true); setEditing(true);
-      var nc = $('#homePages [data-cell="' + key + '"], #dock [data-cell="' + key + '"]');
+      var nc = $('#homePages [data-cell="' + key + '"]');
       if (nc) { try { ui.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } beginDrag(nc, e); }
     }
   }, true);
@@ -1610,7 +2030,6 @@
     var dx = e.clientX - d.x, dy = e.clientY - d.y, ax = Math.abs(dx), ay = Math.abs(dy);
     if (!d.moved) return;
     suppress = true;
-    if (d.t.closest('#homeInd') && dy < -30) { closeApp(); return; }
     if (S.app || S.overlay) return;
     if (d.t.closest('.status') && dy > 50) { openNC(); return; }
     if (!d.t.closest('#pages')) return;
@@ -1628,7 +2047,7 @@
   }, { passive: false });
   ui.addEventListener('contextmenu', function (e) {
     if (S.editing || S.app || S.overlay) return;
-    if (!e.target.closest('#pages, #dock')) return;
+    if (!e.target.closest('#pages')) return;
     e.preventDefault();
     var cell = e.target.closest('.app-cell, .wg, .lib-row');
     if (cell) openCtxFor(cell); else openCtx('empty', null, null, { x: e.clientX, y: e.clientY });
@@ -1658,6 +2077,14 @@
   document.addEventListener('keydown', function (e) {
     if (rz && e.key === 'Escape') { endResize(true); return; }
     if (dg && e.key === 'Escape') { endDrag(true); return; }
+    var pinEl = e.altKey && e.target.closest && e.target.closest('#snPins [data-pin-item]');
+    if (pinEl && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); movePin(pinEl.dataset.pinItem, e.key === 'ArrowUp' ? -1 : 1); return; }
+    if (S.drawer && e.key === 'Escape' && !S.overlay) { closeDrawer(); return; }
+    if (S.drawer && e.key === 'Tab' && !S.overlay) {
+      var df = $$('#side button, #side a').filter(function (x) { return x.getClientRects().length && !x.disabled; });
+      if (e.shiftKey && document.activeElement === df[0]) { e.preventDefault(); df[df.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === df[df.length - 1]) { e.preventDefault(); df[0].focus(); }
+    }
     var mc = e.altKey && e.target.closest && e.target.closest('#homePages [data-cell]');
     if (mc && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(e.key) > -1) {
       e.preventDefault(); moveItem(mc.dataset.cell, (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? -1 : 1); return;
@@ -1666,8 +2093,8 @@
     if (rh0 && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(e.key) > -1) {
       e.preventDefault();
       var fi = findItem(rh0.dataset.resize); if (!fi) return;
-      var cur = SZ.indexOf(eff(fi.it.size)), nx = Math.max(0, Math.min(maxSz(), cur + ((e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1)));
-      if (nx !== cur) setSize(fi.it.id, SZ[nx]); else toast(nx === 0 ? 'Already the smallest size' : 'Largest size for this screen');
+      var kctx = ctxOf(fi.it), ok = sizesFor(kctx), cur = ok.indexOf(eff(fi.it.size, kctx)), nx = Math.max(0, Math.min(ok.length - 1, cur + ((e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1)));
+      if (nx !== cur) setSize(fi.it.id, ok[nx]); else toast(nx === 0 ? 'Already the smallest size' : 'Largest size for this screen');
       return;
     }
     var t = e.target.closest && e.target.closest('[role="tab"]');
@@ -1718,12 +2145,33 @@
     if (e.target.id === 'ticketForm') { toast('Ticket HD-1043 raised. We reply within one working day.'); e.target.reset(); closeTicket(); }
     if (e.target.id === 'composer') { var inp = $('#composeIn'); if (inp.value.trim()) { toast('Message sent'); inp.value = ''; } }
   });
-  var lastLim = dockLimit();
   window.addEventListener('resize', function () {
     if (!isMobile()) { $('#ticketForm').classList.remove('is-open'); $('#appwin').classList.remove('is-thread'); }
     else if ($('#chat').classList.contains('is-open') && S.app === 'communication') $('#appwin').classList.add('is-thread');
-    lastLim = dockLimit(); clearTimeout(window._rh); window._rh = setTimeout(renderHome, 120);
+    applySideMode(); clearTimeout(window._rh); window._rh = setTimeout(renderHome, 120);
     if (S.app) updateAppHeader();
+  });
+
+  /* ================= TREND CHART =================
+     Hover or focus the plot and use ← → (Home / End) to read any week; the filters re-render it and are saved with the layout. */
+  document.addEventListener('pointermove', function (e) {
+    var p = e.target.closest && e.target.closest('.tr__plot'); if (!p || dg || rz) return;
+    var r = p.getBoundingClientRect(), n = p.dataset.vals.split(',').length;
+    setTrendIdx(p, Math.round((e.clientX - r.left) / r.width * (n - 1)));
+  });
+  document.addEventListener('keydown', function (e) {
+    var p = e.target.closest && e.target.closest('.tr__plot'); if (!p || e.altKey) return;
+    var i = +p.getAttribute('aria-valuenow') - 1, n = p.dataset.vals.split(',').length;
+    var to = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : null;
+    if (to === null) return;
+    e.preventDefault(); setTrendIdx(p, to);
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target; if (!t.matches || !t.matches('[data-trend]')) return;
+    var f = findItem(t.dataset.trend); if (!f) return;
+    f.it[t.dataset.k] = t.dataset.k === 'period' ? +t.value : t.value;
+    saveLayout(); renderHome();
+    var n = document.getElementById(t.id); if (n) n.focus();
   });
 
   /* ================= CHART TOOLTIP =================
@@ -1754,6 +2202,7 @@
   (function () { var sv = recallRaw(SITE_KEY); if (DATA && sv && (sv === 'all' || DATA.sites.some(function (x) { return x.id === sv; }))) S.site = sv; })();
   renderHeader();
   syncThemeUI();
+  applySideMode();
   if (window.ResizeObserver) new ResizeObserver(function () { ui.style.setProperty('--hdr-h', $('#statusBar').offsetHeight + 'px'); }).observe($('#statusBar'));
   ui.style.setProperty('--hdr-h', $('#statusBar').offsetHeight + 'px');
   renderHome();

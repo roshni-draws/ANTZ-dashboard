@@ -33,6 +33,7 @@ window.ANTZ_CONFIG = {
     'Indian Star Tortoise': 'assets/img/tortoise.jpg',
     'Purple Frog': 'assets/img/purple-frog.jpg',
     collectionsHero: 'assets/img/savannah.jpg',
+    dashHero: 'assets/img/savannah.jpg',
     'announcement:0': 'assets/img/cubs.jpg',
     'announcement:1': 'assets/img/wild-dog-pack.jpg'
     /* No 'avatar:RS' photo: the header avatar shows initials. */
@@ -57,7 +58,7 @@ window.ANTZ_CONFIG = {
   /* ── Modules ────────────────────────────────────────────────────────────
      One entry per module. Each one automatically becomes an app icon, an App
      Library row, a search result and a stats widget (Small / Medium / Large).
-       id           unique key used everywhere (layout, dock, notifications)
+       id           unique key used everywhere (layout, pins, notifications)
        name, sub    label and one-line description
        icon         Material Symbols name (https://fonts.google.com/icons)
        colour       tile colour. glyph: 'light' = white icon, 'dark' = navy icon (use 'dark' on pale colours)
@@ -122,8 +123,8 @@ window.ANTZ_CONFIG = {
   ],
 
   /* ── Home screen ────────────────────────────────────────────────────────
-     dock   module ids pinned to the dock (4 fit on phones, 6 on tablet/desktop;
-            extra pins sit at the start of page 1). maxPins caps the total.
+     pins   module ids pinned to the sidebar, top to bottom (phones: the drawer and the chips
+            on page 1). maxPins caps the total. A saved antz-pins list wins.
      pages  page 1 first. Each item is one of:
               { app: 'id' }                                     an app icon
               { widget: 'id', size: 'S' | 'M' | 'L' | 'XL' }     that module's widget
@@ -139,21 +140,30 @@ window.ANTZ_CONFIG = {
             Sizes: S 2×2, M 4×2, L 4×4, XL 8×4 (XL shows as L on phones and tablets).
             Items that do not fit on a page flow onto the next page automatically. */
   home: {
-    maxPins: 8,
-    dock: ['collections', 'communication', 'notes', 'focus'],
+    maxPins: 10,
+    pins: ['collections', 'medical', 'administer', 'communication', 'focus', 'help'],
     pages: [
-      /* page 1: Command Centre overview (KPI row, Needs attention, charts) */
+      /* page 1: Command Centre dashboard. zone 'main' = main area, 'side' = right column.
+         Sizes on the main area: S 1×2, M 2×2, L 2×4, W (wide) 4×2, XL 4×4 (of 4 columns);
+         right column: S, M, L (heights 2, 3, 4 rows). */
       [
-        { widget: 'kpi', metric: 'animals', size: 'S', id: 'kpi-animals' },
-        { widget: 'kpi', metric: 'health', size: 'S', id: 'kpi-health' },
-        { widget: 'kpi', metric: 'overdue', size: 'S', id: 'kpi-overdue' },
-        { widget: 'kpi', metric: 'mortality', size: 'S', id: 'kpi-mortality' },
-        { widget: 'kpi', metric: 'audit', size: 'S', id: 'kpi-audit' },
-        { widget: 'attention', size: 'L', id: 'attention' },
-        { widget: 'mortality', size: 'M', id: 'cc-mortality' },
-        { widget: 'compliance', size: 'S', id: 'cc-compliance' },
-        { widget: 'administer', size: 'M', id: 'cc-vacc' },
-        { widget: 'housing', size: 'S', id: 'cc-housing' }
+        { widget: 'hero', size: 'W', id: 'hero', zone: 'main' },
+        { widget: 'kpi', metric: 'health', size: 'S', id: 'kpi-health', zone: 'main' },
+        { widget: 'kpi', metric: 'overdue', size: 'S', id: 'kpi-overdue', zone: 'main' },
+        { widget: 'kpi', metric: 'mortality', size: 'S', id: 'kpi-mortality', zone: 'main' },
+        { widget: 'kpi', metric: 'audit', size: 'S', id: 'kpi-audit', zone: 'main' },
+        { widget: 'trend', metric: 'health', period: 12, size: 'XL', id: 'trend', zone: 'main' },
+        { widget: 'action', preset: 'vacc', size: 'S', id: 'qa-vacc', zone: 'main' },
+        { widget: 'action', preset: 'deworm', size: 'S', id: 'qa-deworm', zone: 'main' },
+        { widget: 'action', preset: 'approvals', size: 'S', id: 'qa-approvals', zone: 'main' },
+        { widget: 'action', preset: 'help', size: 'S', id: 'qa-help', zone: 'main' },
+        { widget: 'activity', size: 'XL', id: 'activity', zone: 'main' },
+        { widget: 'planning', size: 'L', id: 'planning', zone: 'main' },
+        { widget: 'attention', size: 'L', id: 'attention', zone: 'main' },
+        { stack: 'Featured', size: 'L', id: 'featured', zone: 'side', items: [{ type: 'item', ref: { type: 'animal', id: 'PL-014' } }, 'announcements'] },
+        { widget: 'sites', size: 'L', id: 'sites', zone: 'side' },
+        { widget: 'team', size: 'M', id: 'team', zone: 'side' },
+        { widget: 'helpcard', size: 'S', id: 'helpcard', zone: 'side' }
       ],
       [
         { stack: 'Updates', size: 'M', items: ['announcements', 'focus'] },

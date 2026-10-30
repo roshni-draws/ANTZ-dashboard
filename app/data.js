@@ -253,11 +253,50 @@
     };
   }
 
+  /* ---- Recent activity: the latest records, statuses follow the site's own overdue/pending numbers.
+     Deterministic (no PRNG calls), so adding it never changes any other number. ---- */
+  var ACTIVITY = [
+    { type: 'Treatment', module: 'medical', title: 'Wound care check', who: 'Tara · PL-001', img: 'Persian Leopard', when: '29 Oct, 10:42', status: function () { return 'Completed'; } },
+    { type: 'Vaccination', module: 'administer', title: 'Rabies booster', who: 'Zara · PL-014', img: 'PL-014', when: '29 Oct, 09:15', status: function (m) { return m.overdue.vacc > 20 ? 'Overdue' : m.vacc.pending ? 'Pending' : 'Completed'; } },
+    { type: 'Feed', module: 'diet', title: 'Evening feed', who: 'Asiatic Lion · Carnivore Section', img: 'Asiatic Lion', when: '29 Oct, 16:00', status: function () { return 'Pending'; } },
+    { type: 'Transfer', module: 'approvals', title: 'Transfer request', who: 'Gharial ×4', img: 'Gharial', when: '28 Oct, 17:20', status: function (m) { return m.pending.approvals ? 'Pending' : 'Completed'; } },
+    { type: 'New animal', module: 'animals', title: 'Hatchling recorded', who: 'Indian Star Tortoise', img: 'Indian Star Tortoise', when: '28 Oct, 14:05', status: function () { return 'Completed'; } },
+    { type: 'Lab', module: 'lab', title: 'Blood panel results', who: 'Indian Rhinoceros · Rhino 02', img: 'Indian Rhinoceros', when: '28 Oct, 11:30', status: function (m) { return m.lab.flagged ? 'Pending' : 'Completed'; } },
+    { type: 'Inspection', module: 'housing', title: 'Enclosure inspection', who: 'Great Hornbill · Aviary 2', img: 'Great Hornbill', when: '27 Oct, 15:45', status: function (m) { return m.overdue.inspections ? 'Overdue' : 'Completed'; } },
+    { type: 'Deworming', module: 'administer', title: 'Deworming round', who: 'African Wild Dog pack', img: 'African Wild Dog', when: '27 Oct, 08:30', status: function (m) { return m.overdue.deworm > 30 ? 'Overdue' : 'Completed'; } }
+  ];
+  function activity(siteId) {
+    var one = siteId && siteId !== 'all' ? site(siteId) : null;
+    return ACTIVITY.map(function (a, i) {
+      var s = one || SITES[(i * 4) % SITES.length];
+      return { type: a.type, module: a.module, title: a.title, who: a.who, img: a.img, when: a.when, site: s.name, status: a.status(s) };
+    });
+  }
+  /* ---- On duty today: as many people as the Users widget's "active today" ---- */
+  var ROLES = ['Curator', 'Veterinarian', 'Head keeper', 'Keeper', 'Nutritionist', 'Keeper', 'Vet nurse'];
+  function team(siteId) {
+    var m = site(siteId), idx = siteId && siteId !== 'all' ? SITES.indexOf(m) : 0;
+    var people = [];
+    for (var k = 0; k < 6; k++) people.push({ name: STAFF[(idx * 3 + k * 5) % STAFF.length], role: ROLES[k % ROLES.length], shift: k % 3 === 2 ? 'On call' : 'On duty', site: siteId && siteId !== 'all' ? m.name : SITES[(k * 2 + 1) % SITES.length].name });
+    return { onDuty: Math.round(m.staff * 0.23), staff: m.staff, people: people };
+  }
+  /* ---- Planning: progress towards this week's targets ---- */
+  function planning(siteId) {
+    var m = site(siteId);
+    var vt = m.vacc.done + m.vacc.overdue + m.vacc.pending, dt = m.deworm.done + m.deworm.overdue + m.deworm.pending;
+    return [
+      { label: 'Vaccination round', module: 'administer', done: m.vacc.done, total: vt, unit: 'doses' },
+      { label: 'Deworming round', module: 'administer', done: m.deworm.done, total: dt, unit: 'doses' },
+      { label: 'Licences current', module: 'compliance', done: m.licencesCurrent, total: m.licences, unit: 'licences' },
+      { label: 'Audit score to target 85%', module: 'audit', done: m.audit, total: 85, unit: '%' }
+    ];
+  }
   window.ANTZ_DATA = {
     seed: SEED, sites: SITES, all: ALL, staff: STAFF, weeks: weekLabels, days: DAYS,
     site: site, moduleStats: function (id, siteId) { return moduleStats(id, site(siteId)); },
     kpi: function (key, siteId) { return kpi(key, site(siteId)); }, kpis: Object.keys(KPIS),
     attention: function (siteId) { return attention(site(siteId)); },
+    activity: activity, team: team, planning: planning,
     animalsBySpecies: animalsBySpecies, fmt: fmt
   };
 })();

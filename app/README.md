@@ -1,27 +1,50 @@
 # ANTZ Home
 
-An iPad/iPhone-style home screen for ANTZ: a fixed "Hello Roshni" header with search,
-springboard pages of module apps and stats widgets, a dock of pinned modules, edit mode
-with drag-to-resize, widget stacks, a widget gallery, the App Library, search, the
-Notification Center, and six built apps (the other modules open their stats view).
+The ANTZ home: a sidebar of pinned modules, a fixed "Hello Roshni" header with search and the
+Site button, a Command Centre dashboard on page 1, springboard pages of module apps and stats
+widgets after it, edit mode with drag-to-resize, widget stacks, a widget gallery, the App
+Library, search, the Notification Center, and six built apps (the other modules open their
+stats view). There is no dock or bottom bar.
 
 No build step. Double-click `index.html`, or serve the folder (`python3 -m http.server`).
 
 | File | What's in it |
 |---|---|
-| `index.html` | Markup only: header, springboard, dock, app window, the six app screens |
+| `index.html` | Markup only: sidebar, header, springboard, app window, the six app screens |
 | `styles.css` | 1. Style 1 tokens (colours, fonts, radii, shadows) · 2. base · 3. components · 4. responsive |
-| `config.js` | **All content**: user, sites, images, modules (with chart type), home layout, dock, notifications, sample records |
+| `config.js` | **All content**: user, sites, images, photo credits, modules (with chart type), home layout, pins, notifications, sample records |
 | `data.js` | Seeded sample-data generator: per-site numbers and 12-week series, used by every widget |
-| `assets/img/` | Photos (see `CREDITS.md`); none are bundled yet, so placeholders show |
+| `assets/img/` | Licensed photos (see `CREDITS.md`; shown in the app under Settings → Photo credits) |
 | `app.js` | Behaviour. Reads `window.ANTZ_CONFIG`; you rarely need to touch it |
 
-Layout follows the screen width: phone ≤ 640px (4 columns, dock of 4), tablet 641–1239px
-(6 columns), desktop ≥ 1240px (10 columns, dock of 6).
+Layout follows the screen width:
 
-Page 1 is the **Command Centre**: site and date heading, five KPI cards (with change vs last week
-and a 12-week sparkline), a Needs attention list and four chart widgets. Every piece is still a
-widget, so you can move, resize and remove it in edit mode. Pages 2+ are the app springboard.
+| | Sidebar | Command Centre (page 1) | Springboard (pages 2+) |
+|---|---|---|---|
+| Desktop ≥ 1240px | fixed, 240px | main area (4 columns) + right column (340px) | 10 columns |
+| Tablet 641–1239px | 72px icon rail with tooltips; the toggle expands it to 240px (remembered in `antz-side`) | main area, right column below it in 2 columns | 6 columns |
+| Phone ≤ 640px | drawer from the header menu button (focus trapped, Escape closes); pinned modules also show as chips at the top of page 1 | one stack: hero first, KPIs and quick actions two per row, activity table as cards | 4 columns |
+
+Page 1 is the **Command Centre** dashboard: a time-of-day greeting with the active site and a sync
+pill, then panels that are all widgets (move, resize, remove, add back, ⋯ menu, Undo, saved):
+
+| Widget type | What it shows (all from `data.js`, scoped to the active site) |
+|---|---|
+| `hero` | Total animals, change vs last week, and quick actions (Add animal, Record treatment, Log feed, Scan tag) |
+| `kpi` (`metric`) | `animals`, `health`, `overdue`, `mortality` or `audit`: value + change chip with arrow |
+| `trend` (`metric`, `period`) | Smooth 12/8/4-week area line with metric and period filters; hover, or focus and use ← →, to read a week |
+| `action` (`preset`) | Pale module-tinted card with a pending count: `vacc`, `deworm`, `approvals`, `help`, `lab`, `necropsy` |
+| `activity` | Recent activity table (type, details with photo, site, status pill, date); cards when narrow |
+| `planning` | Progress bars: vaccination and deworming rounds, licences, audit target |
+| `attention` | Overdue and pending work by module |
+| `sites` | Every site with animals, audit score and its change; picking one re-scopes the dashboard |
+| `team` | Who is on duty, with role tags |
+| `helpcard` | "Need help?" with a Contact Help Desk button |
+
+Sizes depend on where a widget sits. Dashboard main area: S 1×2, M 2×2, L 2×4, W (wide) 4×2,
+XL 4×4 (phones: 2 columns, W becomes 2×3). Right column: S, M, L (2, 3 or 4 rows tall).
+Springboard: S 2×2, M 4×2, L 4×4, XL 8×4. A saved size the current place or screen can't show
+is drawn at the nearest size that fits.
 
 ## Recipes
 
@@ -116,16 +139,18 @@ In `config.js` → `home.pages`, add one of these to a page (page 1 is first):
 
 ```js
 { app: 'vet' }                                          // an app icon
-{ widget: 'vet', size: 'M' }                            // S 2×2 · M 4×2 · L 4×4 · XL 8×4 (desktop)
+{ widget: 'vet', size: 'M' }                            // a module's stats widget
 { stack: 'Health', size: 'M', items: ['medical', 'lab', 'vet'] }   // swipeable stack
+{ widget: 'kpi', metric: 'health', size: 'S', zone: 'main' }       // page 1 only: zone 'main' or 'side'
 ```
 
-Anything that doesn't fit on a page flows onto the next one.
+On page 1, `zone: 'side'` puts a widget in the right column. Pages 2+ flow onto the next page
+when full. A widget added from the gallery while you are on page 1 lands on page 1.
 
 Once someone rearranges their home screen, their layout is saved in the browser and wins
 over `config.js`. That covers moves, resizes, added and removed widgets, and stacks. Modules
 you add to config later still appear, at the end of the last page. To see config changes
-again, clear `antz-layout` and `antz-pins` in localStorage (or use a private window).
+again, clear `antz-layout-v3` and `antz-pins` in localStorage (or use a private window).
 
 ### Add a Focus Hub item as a widget
 Any saved species, animal, note or announcement can be its own widget:
@@ -152,19 +177,25 @@ To support a **new item type**:
 In edit mode (Edit, or long-press then move), press and drag any icon or widget:
 - The grid shifts live to show where it will land.
 - Hold at the left or right edge for about half a second to change page.
-- Drop an app on the dock to pin it, or drag it out to unpin.
-- Drop a widget on the middle of a stack to add it to the stack.
+- On page 1, drop between the main area and the right column to move a panel across
+  (keyboard: "Move to right column / main area" in its ⋯ menu). Hold near the top or bottom
+  edge to scroll the dashboard.
+- Drop an app icon or module widget on the sidebar to pin that module.
+- Drop a widget on the middle of a stack to add it to the stack (module and Focus Hub widgets).
 
 Escape cancels a drag, and the toast offers Undo. Drag the round corner handle to resize
-(S → M → L, and XL on desktop). Keyboard: Alt + arrow keys on a focused item, or "Move
-earlier / later" in its ⋯ menu; arrow keys on a focused resize handle. Order and sizes are
-saved under `antz-layout`.
+(it snaps to the nearest size that place allows). Keyboard: Alt + arrow keys on a focused item,
+or "Move earlier / later" in its ⋯ menu; arrow keys on a focused resize handle. Order, sizes and
+dashboard areas are saved under `antz-layout-v3`.
 
-### Change the dock pins
-Change `home.dock` in `config.js` (module ids, left to right). Phones show 4 and
-tablet/desktop show 6. Extra pins sit at the start of page 1, and `maxPins` caps the total.
-Users can also pin and unpin from the ⋯ / long-press menu, in edit mode, or with "Keep in
-Dock" inside an app. Their choice is saved under `antz-pins`.
+### Change the sidebar pins
+Change `home.pins` in `config.js` (module ids, top to bottom; an older `home.dock` still works).
+`maxPins` (10) caps the total. Pinning never takes a module off its home page. People can pin
+and unpin from: a module's ⋯ / long-press menu, the pin button in edit mode, the App Library,
+"Pin to sidebar" in an app's header, the "Pin a module" picker in the sidebar, or by dragging an
+icon or widget onto the sidebar. In the sidebar, drag a pin to reorder it (or Alt + ↑ / ↓, or
+"Move up / down" in its ⋯ menu), and drag it out of the sidebar (or ⋯ → "Unpin") to unpin it.
+Their choice is saved under `antz-pins`, the same key the old dock used.
 
 ### Add a new app screen
 1. In `index.html`, inside `#appBody`, add
