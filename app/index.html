@@ -23,7 +23,7 @@
 </script>
 <!--
   ANTZ HOME
-  index.html  markup only (sidebar, header, springboard, app window, app screens)
+  index.html  markup only (sidebar, header, dashboard, app window, app screens)
   styles.css  Style 1 tokens + components
   config.js   all content: user, theme default, sites, modules, chart types, home layout, pins, images, sample data
   data.js     seeded sample-data generator (per-site numbers, 12-week series); loaded before app.js
@@ -37,12 +37,13 @@
 </head>
 <body>
 <div class="shell" id="shell">
-  <!-- ===== SIDEBAR: Command Centre, home pages, pinned modules, App Library, help =====
-       desktop: fixed 240px; tablet: 72px icon rail that expands; phone: drawer from the header menu button -->
+  <!-- ===== SIDEBAR: Command Centre, All modules (App Library sheet), pinned modules, help =====
+       desktop: 240px, collapsible to a 72px icon rail; tablet: the rail, expandable; phone: drawer from the header menu button.
+       The collapse toggle and Ctrl+\ or [ switch it; the choice is saved as antz-side. -->
   <nav class="side" id="side" aria-label="Main">
     <div class="side__top">
       <span class="side__brand"><span class="side__logo" aria-hidden="true"><span class="material-symbols-outlined">pets</span></span><span class="side__word">ANTZ</span></span>
-      <button type="button" class="side__toggle" id="sideToggle" data-act="sideToggle" aria-expanded="false" aria-controls="side" aria-label="Expand sidebar"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">left_panel_open</span></button>
+      <button type="button" class="side__toggle" id="sideToggle" data-act="sideToggle" aria-expanded="true" aria-controls="side" aria-label="Collapse sidebar" aria-keyshortcuts="Control+\ ["><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">left_panel_open</span></button>
       <button type="button" class="side__close" id="sideClose" data-act="drawerClose" aria-label="Close menu"><span class="material-symbols-outlined ico" aria-hidden="true">close</span></button>
     </div>
     <div class="side__scroll">
@@ -93,29 +94,12 @@
     <!-- edit (jiggle) mode bar: sits under the fixed header -->
     <div class="editbar" id="editBar">
       <button type="button" class="round-btn" id="addWidgetBtn" data-act="gallery" aria-label="Add Widget"><span class="material-symbols-outlined ico" aria-hidden="true">add</span></button>
-      <button type="button" class="pill-btn" id="editPagesBtn" data-act="toast" data-msg="Edit Pages · show, hide and reorder home pages">Edit Pages</button>
       <span class="grow" style="flex:1"></span>
       <span class="muted" style="font-size:12px">Drag a widget’s corner to resize</span>
       <button type="button" class="pill-btn pill-btn--dark" id="doneBtn" data-act="done">Done</button>
     </div>
-    <div class="pages-wrap" id="pagesWrap">
-      <div class="pages" id="pages">
-        <div id="homePages" style="display:contents"></div>
-        <section class="page" id="libPage" data-page="2" aria-labelledby="libH">
-          <h2 id="libH" class="vh">App Library</h2>
-          <div class="lib">
-            <div class="lib__top">
-              <label class="search search--pill"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">search</span><span class="vh">Search App Library</span><input type="search" id="libQ" placeholder="App Library"></label>
-              <button type="button" class="link" data-act="libCancel">Cancel</button>
-            </div>
-            <div class="lib__list" id="libList"></div>
-            <nav class="az" id="azIndex" aria-label="Jump to letter"></nav>
-          </div>
-        </section>
-      </div>
-      <button type="button" class="edge edge--l" id="edgeL" data-act="nc" aria-label="Open Notification Center"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">chevron_right</span></button>
-      <button type="button" class="edge edge--r" id="edgeR" data-act="library" aria-label="Open App Library"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">chevron_left</span></button>
-    </div>
+    <!-- the one home page: the Command Centre dashboard (app.js renders it; it scrolls vertically) -->
+    <main class="page page--dash" id="homePages" aria-labelledby="dashH"></main>
   </div>
 
   <!-- APP WINDOW (a launched module) -->

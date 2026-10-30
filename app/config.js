@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════
    ANTZ HOME · CONFIG
    Everything the app shows lives here. app.js only reads this object, so
-   most changes (a new module, new stats, a different home layout) are edits
+   most changes (a new module, new stats, a different dashboard layout) are edits
    to this file and nothing else. See README.md for step-by-step recipes.
    Plain script (no ES modules) so index.html works by double-clicking it.
    ═══════════════════════════════════════════════════════════════════════ */
@@ -56,8 +56,8 @@ window.ANTZ_CONFIG = {
   ],
 
   /* ── Modules ────────────────────────────────────────────────────────────
-     One entry per module. Each one automatically becomes an app icon, an App
-     Library row, a search result and a stats widget (Small / Medium / Large).
+     One entry per module. Each one automatically becomes an App Library row, a search
+     result and a stats widget in the widget gallery (Small / Medium / Large).
        id           unique key used everywhere (layout, pins, notifications)
        name, sub    label and one-line description
        icon         Material Symbols name (https://fonts.google.com/icons)
@@ -123,68 +123,48 @@ window.ANTZ_CONFIG = {
   ],
 
   /* ── Home screen ────────────────────────────────────────────────────────
-     pins   module ids pinned to the sidebar, top to bottom (phones: the drawer and the chips
-            on page 1). maxPins caps the total. A saved antz-pins list wins.
-     pages  page 1 first. Each item is one of:
-              { app: 'id' }                                     an app icon
-              { widget: 'id', size: 'S' | 'M' | 'L' | 'XL' }     that module's widget
-              { stack: 'Name', size: 'M', items: ['id', 'id'] }  a swipeable widget stack
-              { widget: 'item', ref: { type: 'animal', id: 'PL-014' }, size: 'M' }
-                                                                  a saved item as its own widget
-              { widget: 'kpi', metric: 'animals' | 'health' | 'overdue' | 'mortality' | 'audit', size: 'S' }
-                                                                  a Command Centre KPI card (sparkline + change)
-              { widget: 'attention', size: 'L' }                  the Needs attention list
-                ref types: 'animal' (id = animal ID), 'species' | 'note' | 'announcement'
-                (id = name/title, or the index in the lists under data). Stacks can hold
-                items too: items: ['medical', { type: 'item', ref: { type: 'note', id: 0 } }]
-            Sizes: S 2×2, M 4×2, L 4×4, XL 8×4 (XL shows as L on phones and tablets).
-            Items that do not fit on a page flow onto the next page automatically. */
+     There is one home page: the Command Centre dashboard. Every other module is reached from the
+     sidebar pins, "All modules" (the App Library), search and the dashboard's quick actions.
+     pins    module ids pinned to the sidebar, top to bottom (phones: the drawer and the chips
+             above the dashboard). maxPins caps the total. A saved antz-pins list wins.
+     layout  the dashboard's widgets, in order. zone 'main' (default) = main area, 'side' = right column.
+             Each item is one of:
+               { widget: 'id', size: 'S' | 'M' | 'L' }            a module's stats widget
+               { stack: 'Name', size: 'M', items: ['id', 'id'] }  a swipeable widget stack
+               { widget: 'item', ref: { type: 'animal', id: 'PL-014' }, size: 'M' }
+                                                                   a saved item as its own widget
+                 ref types: 'animal' (id = animal ID), 'species' | 'note' | 'announcement'
+                 (id = name/title, or the index in the lists under data). Stacks can hold
+                 items too: items: ['medical', { type: 'item', ref: { type: 'note', id: 0 } }]
+               { widget: 'hero' | 'trend' | 'kpi' | 'action' | 'activity' | 'planning' |
+                         'attention' | 'sites' | 'team' | 'helpcard', … }   Command Centre panels
+                 kpi: metric 'animals' | 'health' | 'overdue' | 'mortality' | 'audit'
+                 trend: metric (as kpi, or 'births') and period 12 | 8 | 4
+                 action: preset 'vacc' | 'deworm' | 'approvals' | 'help' | 'lab' | 'necropsy'
+             Sizes in the main area: S 1×2, M 2×2, L 2×4, W (wide) 4×2, XL 4×4 (of 4 columns);
+             right column: S, M, L (heights 2, 3, 4 rows). Give items an id to keep them stable.
+             Older configs with home.pages (a list of pages) still work: page 1 is used. */
   home: {
     maxPins: 10,
     pins: ['collections', 'medical', 'administer', 'communication', 'focus', 'help'],
-    pages: [
-      /* page 1: Command Centre dashboard. zone 'main' = main area, 'side' = right column.
-         Sizes on the main area: S 1×2, M 2×2, L 2×4, W (wide) 4×2, XL 4×4 (of 4 columns);
-         right column: S, M, L (heights 2, 3, 4 rows). */
-      [
-        { widget: 'hero', size: 'W', id: 'hero', zone: 'main' },
-        { widget: 'kpi', metric: 'health', size: 'S', id: 'kpi-health', zone: 'main' },
-        { widget: 'kpi', metric: 'overdue', size: 'S', id: 'kpi-overdue', zone: 'main' },
-        { widget: 'kpi', metric: 'mortality', size: 'S', id: 'kpi-mortality', zone: 'main' },
-        { widget: 'kpi', metric: 'audit', size: 'S', id: 'kpi-audit', zone: 'main' },
-        { widget: 'trend', metric: 'health', period: 12, size: 'XL', id: 'trend', zone: 'main' },
-        { widget: 'action', preset: 'vacc', size: 'S', id: 'qa-vacc', zone: 'main' },
-        { widget: 'action', preset: 'deworm', size: 'S', id: 'qa-deworm', zone: 'main' },
-        { widget: 'action', preset: 'approvals', size: 'S', id: 'qa-approvals', zone: 'main' },
-        { widget: 'action', preset: 'help', size: 'S', id: 'qa-help', zone: 'main' },
-        { widget: 'activity', size: 'XL', id: 'activity', zone: 'main' },
-        { widget: 'planning', size: 'L', id: 'planning', zone: 'main' },
-        { widget: 'attention', size: 'L', id: 'attention', zone: 'main' },
-        { stack: 'Featured', size: 'L', id: 'featured', zone: 'side', items: [{ type: 'item', ref: { type: 'animal', id: 'PL-014' } }, 'announcements'] },
-        { widget: 'sites', size: 'L', id: 'sites', zone: 'side' },
-        { widget: 'team', size: 'M', id: 'team', zone: 'side' },
-        { widget: 'helpcard', size: 'S', id: 'helpcard', zone: 'side' }
-      ],
-      [
-        { stack: 'Updates', size: 'M', items: ['announcements', 'focus'] },
-        { widget: 'collections', size: 'M' },
-        { widget: 'communication', size: 'S' },
-        { widget: 'item', ref: { type: 'animal', id: 'PL-014' }, size: 'M' },
-        { app: 'notes' }, { app: 'collections' }, { app: 'announcements' }, { app: 'communication' }, { app: 'focus' },
-        { app: 'help' }, { app: 'medical' }, { app: 'administer' }, { app: 'animals' }, { app: 'housing' },
-        { widget: 'notes', size: 'M' },
-        { widget: 'approvals', size: 'S' },
-        { widget: 'diet', size: 'M' }
-      ],
-      [
-        { stack: 'Health', size: 'M', items: ['medical', 'lab', 'pharmacy'] },
-        { widget: 'mortality', size: 'M' },
-        { widget: 'help', size: 'S' },
-        { widget: 'housing', size: 'S' },
-        { widget: 'audit', size: 'L' },
-        { app: 'diet' }, { app: 'lab' }, { app: 'pharmacy' }, { app: 'mortality' }, { app: 'eggs' }, { app: 'necropsy' }, { app: 'fetal' },
-        { app: 'approvals' }, { app: 'audit' }, { app: 'reports' }, { app: 'users' }, { app: 'security' }, { app: 'compliance' }, { app: 'tags' }
-      ]
+    layout: [
+      { widget: 'hero', size: 'W', id: 'hero' },
+      { widget: 'kpi', metric: 'health', size: 'S', id: 'kpi-health' },
+      { widget: 'kpi', metric: 'overdue', size: 'S', id: 'kpi-overdue' },
+      { widget: 'kpi', metric: 'mortality', size: 'S', id: 'kpi-mortality' },
+      { widget: 'kpi', metric: 'audit', size: 'S', id: 'kpi-audit' },
+      { widget: 'trend', metric: 'health', period: 12, size: 'XL', id: 'trend' },
+      { widget: 'action', preset: 'vacc', size: 'S', id: 'qa-vacc' },
+      { widget: 'action', preset: 'deworm', size: 'S', id: 'qa-deworm' },
+      { widget: 'action', preset: 'approvals', size: 'S', id: 'qa-approvals' },
+      { widget: 'action', preset: 'help', size: 'S', id: 'qa-help' },
+      { widget: 'activity', size: 'XL', id: 'activity' },
+      { widget: 'planning', size: 'L', id: 'planning' },
+      { widget: 'attention', size: 'L', id: 'attention' },
+      { stack: 'Featured', size: 'L', id: 'featured', zone: 'side', items: [{ type: 'item', ref: { type: 'animal', id: 'PL-014' } }, 'announcements'] },
+      { widget: 'sites', size: 'L', id: 'sites', zone: 'side' },
+      { widget: 'team', size: 'M', id: 'team', zone: 'side' },
+      { widget: 'helpcard', size: 'S', id: 'helpcard', zone: 'side' }
     ]
   },
 

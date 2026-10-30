@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════
    ANTZ HOME · APP
-   Everything that moves: sidebar + pins, Command Centre dashboard, springboard pages, edit mode with
-   drag-to-resize, widget stacks, widget gallery, App Library, search,
+   Everything that moves: sidebar + pins, the Command Centre dashboard (the only home page), edit mode
+   with drag-to-resize, widget stacks, widget gallery, App Library sheet, search,
    Notification Center, launching apps, and the six built app screens.
    All content comes from window.ANTZ_CONFIG (config.js).
    ═══════════════════════════════════════════════════════════════════════ */
@@ -54,8 +54,9 @@
   function counts() { var l = 0, b = 0, a = 0; Object.keys(SAVE).forEach(function (k) { var s = SAVE[k]; if (s.liked) l++; if (s.bm) b++; if (s.liked || s.bm) a++; }); return { liked: l, bm: b, all: a }; }
 
   /* ================= HOME STATE ================= */
-  /* layout v3: page 1 became the Command Centre dashboard (main area + right column); older saved layouts are ignored */
-  var PIN_KEY = 'antz-pins', LAYOUT_KEY = 'antz-layout-v3', SITE_KEY = 'antz-site', HINT_KEY = 'antz-site-hint', SIDE_KEY = 'antz-side';
+  /* layout v4: one home page, the Command Centre dashboard (main area + right column).
+     A v3 layout (several pages) is migrated once: its page 1 is kept, pages 2+ are dropped. */
+  var PIN_KEY = 'antz-pins', LAYOUT_KEY = 'antz-layout-v4', OLD_LAYOUT_KEY = 'antz-layout-v3', SITE_KEY = 'antz-site', HINT_KEY = 'antz-site-hint', SIDE_KEY = 'antz-side';
   var MAX_PINS = CFG.home.maxPins || 10;
   /* pins live in the sidebar; config.home.pins (older configs: home.dock); a saved antz-pins list wins */
   var pinned = (recall(PIN_KEY) || CFG.home.pins || CFG.home.dock || []).filter(app).slice(0, MAX_PINS);
@@ -88,7 +89,7 @@
   function entryName(e) { if (typeof e === 'string') return app(e).name; var m = itemMeta(e.ref); return m ? m.t : 'Saved item'; }
   function normaliseEntry(e) { return typeof e === 'string' ? e : { type: 'item', ref: refKey(e.ref) }; }
 
-  /* ---- Command Centre widget types (page 1). Each one is a normal widget: edit mode, drag, resize,
+  /* ---- Command Centre widget types. Each one is a normal widget: edit mode, drag, resize,
      remove / add back from the gallery, ⋯ menu, keyboard moves, Undo, saved layout. def = default size;
      open = the module its title or "View all" opens. Renderers live in WIDGETS (search "COMMAND CENTRE WIDGETS"). ---- */
   var DASHW = {
@@ -133,29 +134,30 @@
     return DASHW[it.type].open || 'collections';
   }
 
-  /* config layout → internal items: { k: 'a', id } for apps, { k: 'w', id, type, size } for widgets/stacks/items */
-  function layoutFromConfig() {
-    return CFG.home.pages.map(function (items, p) {
-      return items.map(function (x, i) {
-        if (x.app) return { k: 'a', id: x.app };
-        var id = x.id || 'p' + p + '-' + i, w;
-        if (x.stack) w = { k: 'w', id: id, type: 'stack', name: x.stack, size: x.size || 'M', items: x.items.map(normaliseEntry), idx: 0 };
-        else if (x.widget === 'item') w = { k: 'w', id: id, type: 'item', ref: refKey(x.ref), size: x.size || 'M' };
-        else {
-          w = { k: 'w', id: id, type: x.widget, size: x.size || (DASHW[x.widget] ? DASHW[x.widget].def : 'M') };
-          if (x.metric) w.metric = x.metric;
-          if (x.period) w.period = x.period;
-          if (x.preset) w.preset = x.preset;
-        }
-        if (p === 0 && x.zone === 'side') w.zone = 'side';
-        return w;
-      });
-    });
+  /* config.home.layout → internal widgets { id, type, size, zone? }. Older configs: home.pages
+     (a list of pages) uses its first page; { app: 'id' } icons are skipped (there is no springboard). */
+  function configLayout() {
+    var l = CFG.home.layout || CFG.home.pages || [];
+    return Array.isArray(l[0]) ? l[0] : l;
   }
-  /* a saved layout (order, sizes, added widgets) wins over config; modules added to config later are appended */
+  function layoutFromConfig() {
+    return configLayout().filter(function (x) { return x && !x.app; }).map(function (x, i) {
+      var id = x.id || 'c' + i, w;
+      if (x.stack) w = { id: id, type: 'stack', name: x.stack, size: x.size || 'M', items: x.items.map(normaliseEntry), idx: 0 };
+      else if (x.widget === 'item') w = { id: id, type: 'item', ref: refKey(x.ref), size: x.size || 'M' };
+      else {
+        w = { id: id, type: x.widget, size: x.size || (DASHW[x.widget] ? DASHW[x.widget].def : 'M') };
+        if (x.metric) w.metric = x.metric;
+        if (x.period) w.period = x.period;
+        if (x.preset) w.preset = x.preset;
+      }
+      if (x.zone === 'side') w.zone = 'side';
+      return w;
+    }).filter(validItem);
+  }
+  /* a saved layout (order, sizes, added widgets) wins over config */
   function validItem(x) {
-    if (!x || (x.k !== 'a' && x.k !== 'w')) return false;
-    if (x.k === 'a') return !!app(x.id);
+    if (!x || !x.id || !x.type || x.k === 'a') return false;
     if (x.type === 'stack') return Array.isArray(x.items) && x.items.length > 0;
     if (x.type === 'item') return !!itemMeta(x.ref);
     if (x.type === 'kpi') return !!(DATA && DATA.kpi(x.metric, 'all'));
@@ -164,26 +166,21 @@
     return !!app(x.type);
   }
   function loadLayout() {
-    var saved = recall(LAYOUT_KEY);
-    if (!saved || !Array.isArray(saved.pages)) return layoutFromConfig();
-    var pages = saved.pages.map(function (pg) { return (pg || []).filter(validItem); }).filter(function (pg, i) { return i === 0 || pg.length; });
-    if (!pages.length) return layoutFromConfig();
-    APPS.forEach(function (a) {
-      var present = pages.some(function (pg) { return pg.some(function (x) { return x.k === 'a' && x.id === a.id; }); });
-      if (!present) pages[pages.length - 1].push({ k: 'a', id: a.id });
-    });
-    return pages;
+    var saved = recall(LAYOUT_KEY), items = saved && Array.isArray(saved.items) ? saved.items : null;
+    if (!items) { var old = recall(OLD_LAYOUT_KEY); if (old && Array.isArray(old.pages) && Array.isArray(old.pages[0])) items = old.pages[0]; }
+    items = (items || []).filter(validItem).map(function (x) { delete x.k; if (x.zone !== 'side') delete x.zone; return x; });
+    return items.length ? items : layoutFromConfig();
   }
-  var PAGES = loadLayout();
-  function saveLayout() { store(LAYOUT_KEY, { v: 1, pages: PAGES }); savePins(); }
-  function snapshot() { return JSON.stringify({ pages: PAGES, pinned: pinned, removed: S.removed }); }
-  function restore(snap) { var o = JSON.parse(snap); PAGES = o.pages; pinned = o.pinned; S.removed = o.removed; saveLayout(); renderHome(); }
+  var LAYOUT = loadLayout();
+  function saveLayout() { store(LAYOUT_KEY, { v: 4, items: LAYOUT }); try { localStorage.removeItem(OLD_LAYOUT_KEY); } catch (e) { /* storage blocked */ } savePins(); }
+  function snapshot() { return JSON.stringify({ items: LAYOUT, pinned: pinned }); }
+  function restore(snap) { var o = JSON.parse(snap); LAYOUT = o.items; pinned = o.pinned; saveLayout(); renderHome(); }
   var uidN = 0;
   function newId() { return 'w' + Date.now().toString(36) + (uidN++); }
-  var S = { page: 0, nPages: 2, lib: false, pendingStack: '', stackW: '', editing: false, app: null, level: 'module', species: 0, animal: 0, ann: 0, chat: 0,
+  var S = { pendingStack: '', stackW: '', editing: false, app: null, level: 'module', species: 0, animal: 0, ann: 0, chat: 0,
     noteColl: NOTE_COLLS[0], noteTypes: [], noteQ: '', noteSort: 'Newest first', spClass: 'All', spQ: '', spSort: 'count', anSex: 'All', anQ: '',
     focusTab: 'all', focusType: 'All', folder: FOLDERS[0], annFilter: 'All', chatFilter: 'all', status: '',
-    overlay: null, drawer: false, removed: {}, smartRotate: true, suggestions: true, nExpanded: {}, libQ: '', site: 'all' };
+    overlay: null, drawer: false, smartRotate: true, suggestions: true, nExpanded: {}, site: 'all' };
 
   /* keeps the browser tab title in step with what is on screen */
   function updateTitle() { document.title = (S.app ? app(S.app).name + ' · ' : '') + 'ANTZ'; }
@@ -275,24 +272,15 @@
   }
 
   function isPinned(id) { return pinned.indexOf(id) > -1; }
-  function findItem(wid) { for (var p = 0; p < PAGES.length; p++) for (var i = 0; i < PAGES[p].length; i++) if (PAGES[p][i].id === wid) return { p: p, i: i, it: PAGES[p][i] }; return null; }
-  function stacks() { var r = []; PAGES.forEach(function (p) { p.forEach(function (x) { if (x.type === 'stack') r.push(x); }); }); return r; }
+  function findItem(wid) { for (var i = 0; i < LAYOUT.length; i++) if (LAYOUT[i].id === wid) return { i: i, it: LAYOUT[i] }; return null; }
+  function stacks() { return LAYOUT.filter(function (x) { return x.type === 'stack'; }); }
 
   /* ================= RENDER: icons, widgets ================= */
   function glyph(a) { return '<span class="material-symbols-outlined" aria-hidden="true">' + a.icon + '</span>'; }
   /* tile colour comes from the module's config entry; 'dark' glyph = navy icon for pale colours */
   function tileStyle(a, extra) { return 'style="--f:' + a.colour + (a.glyph === 'dark' ? ';--glyph:var(--s1-navy)' : '') + (extra ? ';' + extra : '') + '"'; }
-  function appLabel(a) { return a.name + (a.badge ? ', ' + a.badge + ' ' + a.bw : '') + (isPinned(a.id) ? ', pinned' : ''); }
-  function appIc(a, withBadge, fixed) {
-    return '<span class="app__ic" ' + tileStyle(a) + '>' + glyph(a) + (withBadge && a.badge ? '<span class="badge" aria-hidden="true">' + a.badge + '</span>' : '') + (fixed ? '<span class="fixpin">' + icon('pin', '') + '</span>' : '') + '</span>';
-  }
-  function appCell(id, where) {
-    var a = app(id);
-    return '<div class="app-cell' + (a.core ? ' is-core' : '') + '" data-cell="app:' + id + '"' + (where === 'fixed' ? ' data-fixed="1"' : '') + '>' +
-      '<button type="button" class="app" data-open="' + id + '" aria-label="' + esc(appLabel(a)) + '">' + appIc(a, true, where === 'fixed') + '<span class="app__lbl" aria-hidden="true">' + esc(a.name) + '</span></button>' +
-      '<button type="button" class="app__more" data-more="app:' + id + '" aria-haspopup="menu" aria-label="More options for ' + esc(a.name) + '">' + icon('more') + '</button>' +
-      '<button type="button" class="rm" data-remove="app:' + id + '" aria-label="Remove ' + esc(a.name) + ' from Home Screen">−</button>' +
-      '<button type="button" class="pin-b" data-pin="' + id + '" aria-pressed="' + isPinned(id) + '" aria-label="Pin ' + esc(a.name) + ' to the sidebar">' + icon('pin') + '</button></div>';
+  function appIc(a, withBadge) {
+    return '<span class="app__ic" ' + tileStyle(a) + '>' + glyph(a) + (withBadge && a.badge ? '<span class="badge" aria-hidden="true">' + a.badge + '</span>' : '') + '</span>';
   }
   function hd(type) { var a = app(type); return '<span class="wg__hd"><span class="gl" ' + tileStyle(a) + '>' + glyph(a) + '</span><span class="ell">' + esc(a.name) + '</span></span>'; }
   /* ================= IMAGES =================
@@ -485,7 +473,7 @@
       return head + '<span class="att">' + list + '</span>';
     }
   };
-  /* ================= COMMAND CENTRE WIDGETS (page 1) =================
+  /* ================= COMMAND CENTRE WIDGETS =================
      Every renderer takes (type, size, it) and draws from data.js for the active site (S.site).
      size is the size shown here: S, M, L, W (wide) or XL. */
   function panelHd(title, open, openLabel, act) {
@@ -681,26 +669,23 @@
     return app(it.type).name + ' widget';
   }
   /* ---- widget sizes depend on where the widget sits ----
-     'sb'   springboard pages 2+:  S 2×2, M 4×2, L 4×4, XL 8×4 (XL only with 8+ columns)
      'main' dashboard main area (4 columns; 2 on phones): S 1×2, M 2×2, L 2×4, W 4×2, XL 4×4
      'side' dashboard right column (1 column; 2 side by side on tablets): S 1×2, M 1×3, L 1×4
      The saved size is kept as chosen; eff() shows the nearest size the current place and screen allow. */
   var SZ = ['S', 'M', 'L', 'W', 'XL'], SZ_NAME = { S: 'Small', M: 'Medium', L: 'Large', W: 'Wide', XL: 'Extra large' };
   var SZ_FALLBACK = { XL: ['L', 'W', 'M', 'S'], W: ['M', 'L', 'S'], L: ['M', 'S'], M: ['S', 'L'], S: ['M'] };
   function bp() { var w = window.innerWidth; return w <= 640 ? 'phone' : w < 1240 ? 'tab' : 'desk'; }
-  function gridCols() { return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cols'), 10) || 4; }
   function spansFor(ctx) {
-    if (ctx === 'main') return bp() === 'phone' ? { S: [1, 2], M: [2, 2], W: [2, 3], L: [2, 4] } : { S: [1, 2], M: [2, 2], L: [2, 4], W: [4, 2], XL: [4, 4] };
     if (ctx === 'side') return { S: [1, 2], M: [1, 3], L: [1, 4] };
-    var sp = { S: [2, 2], M: [4, 2], L: [4, 4] }; if (gridCols() >= 8) sp.XL = [8, 4]; return sp;
+    return bp() === 'phone' ? { S: [1, 2], M: [2, 2], W: [2, 3], L: [2, 4] } : { S: [1, 2], M: [2, 2], L: [2, 4], W: [4, 2], XL: [4, 4] };
   }
   function sizesFor(ctx) { var sp = spansFor(ctx); return SZ.filter(function (s) { return sp[s]; }); }
   function eff(size, ctx) {
-    var ok = sizesFor(ctx || 'sb'); if (ok.indexOf(size) > -1) return size;
+    var ok = sizesFor(ctx || 'main'); if (ok.indexOf(size) > -1) return size;
     var fb = SZ_FALLBACK[size] || []; for (var i = 0; i < fb.length; i++) if (ok.indexOf(fb[i]) > -1) return fb[i];
     return ok[0];
   }
-  function ctxOf(it) { var f = findItem(it.id); return f && f.p === 0 ? (it.zone === 'side' ? 'side' : 'main') : 'sb'; }
+  function ctxOf(it) { return it.zone === 'side' ? 'side' : 'main'; }
   function setSize(wid, size, silent) {
     var f = findItem(wid); if (!f) return;
     var old = f.it.size; if (old === size) return;
@@ -710,7 +695,6 @@
     updateTitle();
   }
   function widgetCell(it, ctx) {
-    ctx = ctx || 'sb';
     var stack = it.type === 'stack';
     if (stack && it.idx >= it.items.length) it.idx = 0;
     var cur = stack ? it.items[it.idx] : null;
@@ -739,7 +723,7 @@
       '<button type="button" class="rs" data-resize="' + it.id + '" aria-label="Resize ' + esc(label) + ', now ' + SZ_NAME[sz] + '. Drag the corner, or use the arrow keys"></button></div>';
   }
   function greeting() { var h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
-  /* page 1 heading: greeting, active site + date, sync status; on phones a row of pinned-module chips */
+  /* dashboard heading: greeting, active site + date, sync status; on phones a row of pinned-module chips */
   function dashHeader() {
     var m = siteMetrics(), n = DATA ? DATA.sites.length : 9;
     var chips = bp() === 'phone' && pinned.length ? '<nav class="pin-chips" aria-label="Pinned modules">' + pinned.map(function (id) {
@@ -749,119 +733,70 @@
       '<p class="dash-hd__s">Here’s ' + esc(siteName(S.site)) + ' today · ' + esc(CFG.user.date) + ' · sample data</p></div>' +
       '<p class="dash-ok"><span class="material-symbols-outlined" aria-hidden="true">verified</span><span><b>' + (S.site === 'all' ? 'All ' + n + ' sites synced' : esc(siteName(S.site)) + ' synced') + '</b><small>Audit score ' + (m ? m.audit : '–') + '% · updated 09:00</small></span></p></header>' + chips;
   }
+  /* the home screen is one page: the Command Centre dashboard (main area + right column), scrolling vertically */
   function renderHome() {
     var keep = document.activeElement && document.activeElement.closest && document.activeElement.closest('#homePages [data-cell]');
     var keepSel = keep ? keep.getAttribute('data-cell') : null;
     var keepCls = keep ? document.activeElement.className : '';
-    var keepScroll = $('.page--dash') ? $('.page--dash').scrollTop : 0;
-    /* page 1 is the dashboard (main area + right column, scrolls); pages 2+ reflow like iOS by cell capacity */
-    var cap = capacity(), COST = { S: 4, M: 8, L: 16, W: 16, XL: 32 };
-    var pages = [{ html: '', side: '', used: 0 }];
-    var place = function (h, c, noCap, side) { var cur = pages[pages.length - 1]; if (!noCap && cur.used > 0 && cur.used + c > cap) { cur = { html: '', side: '', used: 0 }; pages.push(cur); } if (side) cur.side += h; else cur.html += h; cur.used += c; };
-    PAGES.forEach(function (items, p) {
-      if (p === 1 || (p > 1 && pages[pages.length - 1].used > 0)) pages.push({ html: '', side: '', used: 0 });
-      items.forEach(function (it) {
-        if (it.k === 'a' && S.removed[it.id]) return;
-        var ctx = p === 0 ? (it.zone === 'side' ? 'side' : 'main') : 'sb';
-        var c = it.k === 'a' ? 1 : COST[eff(it.size, ctx)];
-        place(it.k === 'a' ? appCell(it.id, 'page') : widgetCell(it, ctx), c, p === 0, ctx === 'side');
-      });
-    });
-    S.nPages = pages.length;
-    $('#homePages').innerHTML = pages.map(function (pg, i) {
-      if (i === 0) return '<section class="page page--dash" data-page="0" aria-label="Command Centre">' + dashHeader() +
-        '<div class="dash"><div class="sb-grid dz dz--main" data-zone="main" role="group" aria-label="Main panels">' + pg.html + '</div>' +
-        '<div class="sb-grid dz dz--side" data-zone="side" role="group" aria-label="Right column">' + pg.side + '</div></div></section>';
-      return '<section class="page" data-page="' + i + '" aria-label="Home page ' + (i + 1) + '"><div class="sb-grid">' + pg.html + '</div></section>';
-    }).join('');
-    spillOverflow();
-    $('#libPage').dataset.page = S.nPages;
-    if (S.lib) S.page = S.nPages; else if (S.page >= S.nPages) S.page = S.nPages - 1;
-    if ($('.page--dash')) $('.page--dash').scrollTop = keepScroll;
-    renderLibrary();
-    renderPageCtl();
+    var board = $('#homePages'), keepScroll = board.scrollTop;
+    var main = '', side = '';
+    LAYOUT.forEach(function (it) { if (it.zone === 'side') side += widgetCell(it, 'side'); else main += widgetCell(it, 'main'); });
+    board.innerHTML = dashHeader() +
+      '<div class="dash"><div class="dz dz--main" data-zone="main" role="group" aria-label="Main panels">' + main + '</div>' +
+      '<div class="dz dz--side" data-zone="side" role="group" aria-label="Right column">' + side + '</div></div>';
+    board.scrollTop = keepScroll;
+    renderSide();
     if (keepSel) {
       var cell = $('#homePages [data-cell="' + keepSel + '"]');
       var target = cell && (keepCls ? cell.querySelector('.' + keepCls.split(' ')[0]) : null);
       if (target) target.focus({ preventScroll: true });
     }
   }
-  /* The cell-count estimate can still leave a page taller than the screen (a Large widget packed
-     low, for example), which hides that widget's bottom and its resize handle. After rendering,
-     move whatever sticks out below a page onto the start of the next page. */
-  function spillOverflow() {
-    var pages = $$('#homePages .page');
-    for (var i = 1; i < pages.length; i++) {
-      var pg = pages[i], grid = $('.sb-grid', pg), limit = pg.getBoundingClientRect().top + pg.clientHeight - 4;
-      var moved = [];
-      while (grid.children.length > 1) {
-        var last = grid.lastElementChild, overflow = $$('[data-cell]', grid).some(function (c) { return c.parentElement === grid && c.getBoundingClientRect().bottom > limit; });
-        if (!overflow) break;
-        moved.unshift(last); grid.removeChild(last);
-      }
-      if (!moved.length) continue;
-      if (!pages[i + 1]) {
-        $('#homePages').insertAdjacentHTML('beforeend', '<section class="page" data-page="' + pages.length + '" aria-label="Home page ' + (pages.length + 1) + '"><div class="sb-grid"></div></section>');
-        pages = $$('#homePages .page');
-      }
-      var next = $('.sb-grid', pages[i + 1]);
-      moved.reverse().forEach(function (c) { next.insertBefore(c, next.firstChild); });
-    }
-    S.nPages = pages.length;
-  }
-  /* a new widget goes on the dashboard when you are looking at it, else on the first springboard page with room */
-  function placeNew(item) {
-    if (S.page === 0 && !S.lib) { item.zone = 'main'; PAGES[0].push(item); return 0; }
-    var cap = capacity(), COST = { S: 4, M: 8, L: 16, W: 16, XL: 32 };
-    var need = COST[eff(item.size)];
-    for (var p = 1; p < PAGES.length; p++) {
-      var used = PAGES[p].reduce(function (n, x) { return n + (x.k === 'a' ? (S.removed[x.id] ? 0 : 1) : COST[eff(x.size)]); }, 0);
-      if (used + need <= cap) { PAGES[p].push(item); return p; }
-    }
-    PAGES.push([item]); return PAGES.length - 1;
-  }
-  function capacity() {
-    var cs = getComputedStyle(document.documentElement);
-    var cols = parseInt(cs.getPropertyValue('--cols'), 10) || 4, row = parseFloat(cs.getPropertyValue('--row')) || 90, gap = parseFloat(cs.getPropertyValue('--gapY')) || 10;
-    var pg = $('#homePages .page:not(.page--dash)') || $('.page');
-    var h = (pg ? pg.clientHeight : 600) - 20;
-    var rows = Math.max(3, Math.floor((h + gap) / (row + gap)));
-    return cols * rows;
-  }
-  function renderPageCtl() {
-    $$('.page').forEach(function (pg, i) { pg.classList.toggle('is-current', i === S.page); if (i === S.page) pg.removeAttribute('inert'); else pg.setAttribute('inert', ''); });
-    $('#pages').style.transform = 'translateX(' + (-100 * S.page) + '%)';
-    renderSide();
-  }
-  function setPage(p) { S.page = Math.max(0, Math.min(S.nPages, p)); S.lib = S.page === S.nPages; renderPageCtl(); updateTitle(); }
 
-  /* App Library */
+  /* App Library: a dialog sheet from "All modules" in the sidebar. Searchable A–Z list; each row opens
+     the module, pins it (or drag the row onto the sidebar) and adds its widget to the dashboard. */
+  function openLibrary(trigger) {
+    var fromDrawer = S.drawer;
+    if (S.drawer) closeDrawer(true);
+    if (S.app) closeApp(true);
+    closeOverlay(true);
+    opener = fromDrawer ? $('#menuBtn') : (trigger || document.activeElement); S.overlay = 'library'; root._libQ = '';
+    root.innerHTML = '<div class="sheet-wrap" data-act="closeOverlayBg"><div class="sheet sheet--lib" role="dialog" aria-modal="true" aria-labelledby="libH"><div class="sheet__grip" aria-hidden="true"></div>' +
+      '<div class="sheet__hd"><h2 id="libH">All modules</h2><button type="button" class="pill-btn pill-btn--dark" data-act="closeOverlay">Done</button></div>' +
+      '<label class="search search--pill"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">search</span><span class="vh">Search modules</span><input type="search" id="libQ" placeholder="Search ' + APPS.length + ' modules" autocomplete="off"></label>' +
+      '<p class="muted lib__note" id="libN" aria-live="polite"></p>' +
+      '<div class="lib" id="libScroll"><div class="lib__list" id="libList"></div><nav class="az" id="azIndex" aria-label="Jump to letter"></nav></div></div></div>';
+    $('#libQ').addEventListener('input', function (e) { root._libQ = e.target.value; renderLibrary(); });
+    renderLibrary(); $('#libQ').focus(); syncInert(); updateTitle();
+  }
   function renderLibrary() {
-    var q = S.libQ.toLowerCase();
+    if (S.overlay !== 'library' || !$('#libList')) return;
+    var q = (root._libQ || '').toLowerCase();
     var list = APPS.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).filter(function (a) { return !q || (a.name + ' ' + a.sub).toLowerCase().indexOf(q) > -1; });
     var letters = {};
     var html = '';
     list.forEach(function (a) {
       var L = a.name[0].toUpperCase();
       if (!letters[L]) { letters[L] = 1; html += '<h3 class="lib__letter" id="lib-' + L + '">' + L + '</h3>'; }
-      html += '<div class="lib-row' + (a.core ? ' is-core' : '') + '" data-cell="lib:' + a.id + '"><button type="button" class="lib-open" data-open="' + a.id + '">' + appIc(a, true) +
-        '<span class="name">' + esc(a.name) + '<small>' + esc(a.sub) + (isPinned(a.id) ? ' · Pinned' : S.removed[a.id] ? ' · Library only' : '') + '</small></span></button>' +
+      html += '<div class="lib-row' + (a.core ? ' is-core' : '') + '" data-lib="' + a.id + '"><span class="lib-grip" aria-hidden="true" title="Drag onto the sidebar to pin"><span class="material-symbols-outlined">drag_indicator</span></span>' +
+        '<button type="button" class="lib-open" data-open="' + a.id + '">' + appIc(a, true) +
+        '<span class="name">' + esc(a.name) + '<small>' + esc(a.sub) + (isPinned(a.id) ? ' · Pinned' : '') + '</small></span></button>' +
         '<button type="button" class="lib-more" data-pin="' + a.id + '" aria-pressed="' + isPinned(a.id) + '" aria-label="Pin ' + esc(a.name) + ' to the sidebar">' + icon('pin') + '</button>' +
-        '<button type="button" class="lib-more" data-act="libAdd" data-id="' + a.id + '" aria-label="Add ' + esc(a.name) + ' widget">' + icon('plus') + '</button>' +
-        '<button type="button" class="lib-more" data-more="app:' + a.id + '" aria-haspopup="menu" aria-label="More options for ' + esc(a.name) + '">' + icon('more') + '</button></div>';
+        '<button type="button" class="lib-more" data-act="libAdd" data-id="' + a.id + '" aria-label="Add ' + esc(a.name) + ' widget to the dashboard">' + icon('plus') + '</button></div>';
     });
-    $('#libList').innerHTML = html || '<p class="muted" style="padding:16px">No module matches “' + esc(S.libQ) + '”.</p>';
-    $('#azIndex').innerHTML = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map(function (L) {
-      return '<button type="button" data-act="az" data-l="' + L + '"' + (letters[L] ? '' : ' disabled') + ' aria-label="Jump to ' + (L === '#' ? 'numbers' : L) + '">' + L + '</button>';
+    $('#libN').textContent = list.length + ' of ' + APPS.length + ' modules. ' + pinned.length + ' of ' + MAX_PINS + ' pinned.';
+    $('#libList').innerHTML = html || '<p class="muted" style="padding:16px">No module matches “' + esc(root._libQ) + '”.</p>';
+    $('#azIndex').innerHTML = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(function (L) {
+      return '<button type="button" data-act="az" data-l="' + L + '"' + (letters[L] ? '' : ' disabled') + ' aria-label="Jump to ' + L + '">' + L + '</button>';
     }).join('');
   }
 
   /* ================= PINNING + SIDEBAR =================
      One pin list (antz-pins, up to MAX_PINS) shown in the sidebar on every screen size: a fixed
      240px panel on desktop, a 72px icon rail on tablets (expand toggle, remembered), and a drawer
-     from the header menu button on phones. Pinning never moves a module off its home page.
-     Pin from: a module's ⋯ / long-press menu, the pin button in edit mode, the App Library,
-     the app header ("Pin to sidebar"), the "Pin a module" picker, or drag an icon/widget onto Pinned.
+     from the header menu button on phones. Desktop and tablet can collapse it to the rail (antz-side).
+     Pin from: a widget's ⋯ / long-press menu, the App Library, the app header ("Pin to sidebar"),
+     the "Pin a module" picker, or drag a dashboard widget or App Library row onto the sidebar.
      Unpin from: the same places, a pin's ⋯ menu, or drag a pin out of the sidebar. */
   function togglePin(id, trigger) {
     var a = app(id); if (!a) return;
@@ -871,11 +806,13 @@
       toast(a.name + ' unpinned from the sidebar.', 'Undo', function () { pinned = snap; savePins(); refreshAll(); });
     } else {
       if (pinned.length >= MAX_PINS) { toast('Up to ' + MAX_PINS + ' pins. Unpin a module first.'); return; }
-      pinned.push(id); delete S.removed[id];
+      pinned.push(id);
       toast(a.name + ' pinned to the sidebar.', 'Undo', function () { pinned = snap; savePins(); refreshAll(); });
     }
     savePins(); refreshAll();
-    if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true });
+    /* the picker and App Library redraw their rows: keep focus on the same row's pin button */
+    if (trigger && !document.contains(trigger)) trigger = $('#overlayRoot [data-pin="' + id + '"]');
+    if (trigger) trigger.focus({ preventScroll: true });
   }
   function movePin(id, dir) {
     var i = pinned.indexOf(id), j = i + dir; if (i < 0) return;
@@ -889,6 +826,7 @@
     renderHome();
     $$('[data-pin]').forEach(function (b) { if (b.dataset.pin) b.setAttribute('aria-pressed', String(isPinned(b.dataset.pin))); });
     if (S.overlay === 'picker') renderPicker();
+    if (S.overlay === 'library') renderLibrary();
     updateTitle();
   }
   function snItem(o) {
@@ -898,12 +836,8 @@
   }
   function renderSide() {
     if (!$('#snHome')) return;
-    var home = !S.app && !S.lib;
-    var h = snItem({ label: 'Command Centre', icon: 'space_dashboard', attr: ' data-act="navPage" data-p="0"', cur: home && S.page === 0 });
-    /* springboard pages: one item each, or a single "Home pages" item when a small screen makes many */
-    if (S.nPages <= 4) for (var i = 1; i < S.nPages; i++) h += snItem({ label: 'Home page ' + (i + 1), icon: 'apps', attr: ' data-act="navPage" data-p="' + i + '"', cur: home && S.page === i, cls: ' sn--sub' });
-    else if (S.nPages > 1) h += snItem({ label: 'Home pages', icon: 'apps', attr: ' data-act="navPage" data-p="' + (home && S.page > 0 ? S.page : 1) + '"', cur: home && S.page > 0, sr: ', ' + (S.nPages - 1) + ' pages, swipe to move between them' + (home && S.page > 0 ? ', page ' + (S.page + 1) + ' showing' : ''), cls: ' sn--sub' });
-    h += snItem({ label: 'All modules', icon: 'grid_view', attr: ' data-act="navPage" data-p="lib"', cur: !S.app && S.lib });
+    var h = snItem({ label: 'Command Centre', icon: 'space_dashboard', attr: ' data-act="home"', cur: !S.app });
+    h += snItem({ label: 'All modules', icon: 'grid_view', attr: ' data-act="library" aria-haspopup="dialog"' });
     $('#snHome').innerHTML = h;
     $('#snPinsN').textContent = pinned.length + ' of ' + MAX_PINS;
     if (pd && pd.on) return;   /* a pin is being dragged: keep its list (a timed re-render would duplicate it) */
@@ -912,19 +846,25 @@
       return snItem({ label: a.name, icon: a.icon, attr: ' data-open="' + id + '" data-pin-item="' + id + '"', cur: S.app === id, badge: a.badge, sr: a.badge ? ', ' + a.badge + ' ' + a.bw : '',
         style: ' ' + tileStyle(a), cls: ' sn--pin',
         more: '<button type="button" class="sn__more" data-more="pin:' + id + '" aria-haspopup="menu" aria-label="More options for ' + esc(a.name) + ' pin">' + icon('more') + '</button>' });
-    }).join('') : '<li class="side__empty"><b>Pin modules here</b><span>Use “Pin a module”, a module’s ⋯ menu, or drag an app icon here.</span></li>';
-    $('#sideToggle').hidden = bp() !== 'tab';
+    }).join('') : '<li class="side__empty"><b>Pin modules here</b><span>Use “Pin a module”, All modules, or drag a widget here.</span></li>';
   }
-  /* tablet rail: collapsed (72px icons + tooltips) or expanded; the choice is remembered */
-  function sideExpanded() { return recallRaw(SIDE_KEY) === 'open'; }
+  /* desktop and tablet: full 240px sidebar or the 72px icon rail (labels become tooltips).
+     Saved as antz-side ('open' | 'rail'); with nothing saved, desktop opens expanded and tablet as the rail. */
+  function sideExpanded() { var v = recallRaw(SIDE_KEY); return v === 'open' ? true : v === 'rail' ? false : bp() === 'desk'; }
   function applySideMode() {
-    var tab = bp() === 'tab', open = tab && sideExpanded();
-    document.body.classList.toggle('side-rail', tab && !open);
+    var phone = bp() === 'phone', open = phone || sideExpanded();
+    document.body.classList.toggle('side-rail', !open);
     var t = $('#sideToggle');
-    t.setAttribute('aria-expanded', String(!tab || open));
+    t.setAttribute('aria-expanded', String(open));
     t.setAttribute('aria-label', open ? 'Collapse sidebar' : 'Expand sidebar');
+    t.dataset.label = open ? 'Collapse sidebar' : 'Expand sidebar';
     t.querySelector('.material-symbols-outlined').textContent = open ? 'left_panel_close' : 'left_panel_open';
-    if (bp() !== 'phone' && S.drawer) closeDrawer(true);
+    if (!phone && S.drawer) closeDrawer(true);
+  }
+  function toggleSide() {
+    if (bp() === 'phone') return;
+    try { localStorage.setItem(SIDE_KEY, sideExpanded() ? 'rail' : 'open'); } catch (e) { /* storage blocked: still toggles for this visit */ }
+    applySideMode(); $('#sideToggle').focus({ preventScroll: true });
   }
   /* phone drawer: traps focus, Escape or the scrim closes it */
   function openDrawer() {
@@ -943,14 +883,11 @@
     ui.removeAttribute('inert');
     if (!silent) $('#menuBtn').focus({ preventScroll: true });
   }
-  function navPage(p) {
+  /* "Command Centre" in the sidebar (and the app window's Dashboard button): back to the dashboard heading */
+  function goHome() {
     if (S.drawer) closeDrawer(true);
     if (S.app) closeApp(true);
-    if (p === 'lib') { setPage(S.nPages); $('#libQ').focus({ preventScroll: true }); return; }
-    setPage(+p);
-    var pg = $('#homePages .page[data-page="' + p + '"]');
-    var f = pg && (+p === 0 ? $('#dashH', pg) : $('[data-cell] button', pg));
-    if (f) { if (+p === 0) f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
+    var f = $('#dashH'); if (f) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
   }
   /* "Pin a module" picker: searchable list with pin toggles */
   function openPicker() {
@@ -1015,6 +952,44 @@
   }, true);
   document.addEventListener('pointercancel', function () { if (pd && pd.ghost) pd.ghost.remove(); pd = null; document.body.classList.remove('is-pin-drag'); renderSide(); }, true);
 
+  /* drag an App Library row onto the sidebar (full or rail) to pin that module.
+     Mouse and pen: drag the row; touch: drag its grip (the list itself scrolls). Keyboard: the row's Pin button. */
+  var ld = null;
+  function endLibDrag() {
+    if (!ld) return null;
+    var d = ld; ld = null;
+    if (d.on) { d.ghost.remove(); d.row.classList.remove('is-drag-src'); document.body.classList.remove('is-lib-drag'); $('#snPins').classList.remove('is-drop'); }
+    return d;
+  }
+  document.addEventListener('pointerdown', function (e) {
+    var row = e.button === 0 && S.overlay === 'library' && e.target.closest && e.target.closest('.lib-row');
+    if (!row || e.target.closest('.lib-more') || bp() === 'phone' || (e.pointerType === 'touch' && !e.target.closest('.lib-grip'))) return;
+    ld = { id: row.dataset.lib, row: row, x: e.clientX, y: e.clientY, on: false };
+  }, true);
+  document.addEventListener('pointermove', function (e) {
+    if (!ld) return;
+    if (!ld.on) {
+      if (Math.abs(e.clientX - ld.x) < 6 && Math.abs(e.clientY - ld.y) < 6) return;
+      ld.on = true;
+      var r = ld.row.getBoundingClientRect(); ld.dx = e.clientX - r.left; ld.dy = e.clientY - r.top;
+      ld.ghost = ld.row.cloneNode(true); ld.ghost.className = 'lib-row lib-ghost'; ld.ghost.setAttribute('aria-hidden', 'true'); ld.ghost.style.width = r.width + 'px';
+      document.body.appendChild(ld.ghost); ld.row.classList.add('is-drag-src'); document.body.classList.add('is-lib-drag');
+    }
+    e.preventDefault();
+    ld.ghost.style.transform = 'translate(' + (e.clientX - ld.dx) + 'px,' + (e.clientY - ld.dy) + 'px)';
+    var sr = $('#side').getBoundingClientRect();
+    ld.over = e.clientX >= sr.left && e.clientX <= sr.right && e.clientY >= sr.top && e.clientY <= sr.bottom;
+    ld.ghost.classList.toggle('is-over', ld.over);
+    $('#snPins').classList.toggle('is-drop', ld.over);
+  }, true);
+  document.addEventListener('pointerup', function () {
+    var d = endLibDrag(); if (!d || !d.on) return;
+    suppress = true; setTimeout(function () { suppress = false; }, 50);
+    if (!d.over) return;
+    if (isPinned(d.id)) toast(app(d.id).name + ' is already pinned.'); else togglePin(d.id, $('#overlayRoot [data-pin="' + d.id + '"]'));
+  }, true);
+  document.addEventListener('pointercancel', function () { endLibDrag(); }, true);
+
   /* ================= TOAST ================= */
   var toastTimer, toastFn;
   function toast(msg, act, fn) {
@@ -1034,6 +1009,9 @@
     setInert('#home', !!S.app || ov);
     setInert('#statusBar', ov); setInert('#editBar', ov); setInert('#appwin', ov); setInert('#side', ov);
   }
+  /* an overlay opened from inside another overlay (App Library → widget gallery) keeps the first trigger,
+     so closing it returns focus to the button that started the chain */
+  function setOpener(fallback) { var ae = document.activeElement; opener = ae && root.contains(ae) && opener && document.contains(opener) ? opener : (fallback || ae); }
   function closeOverlay(silent) {
     if (!S.overlay) return;
     if (S.overlay === 'site') $('#sitePill').setAttribute('aria-expanded', 'false');
@@ -1066,13 +1044,6 @@
       items.push(['Add Widget', function () { openGallery({ type: id, size: 'M', mode: 'add' }); }, 'plus']);
       items.push('-');
       items.push([isPinned(id) ? 'Unpin from sidebar' : 'Pin to sidebar', function () { togglePin(id); }, 'pin']);
-      if (S.removed[id]) items.push(['Add to Home Screen', function () { delete S.removed[id]; refreshAll(); toast(a.name + ' is back on its home page.'); }, 'plus']);
-      if (!S.removed[id]) {
-        items.push(['Move earlier', function () { moveItem('app:' + id, -1); }, 'chevron_left']);
-        items.push(['Move later', function () { moveItem('app:' + id, 1); }, 'chevron_right']);
-      }
-      items.push(['Edit Home Screen', function () { setEditing(true); }, 'grid']);
-      if (!S.removed[id]) items.push(['Remove App', function () { removeCell('app:' + id); }, 'x', 1]);
     } else if (kind === 'w') {
       var f = findItem(id); if (!f) return;
       var it = f.it, stack = it.type === 'stack', type = stack ? entryType(it.items[it.idx]) : it.type;
@@ -1085,7 +1056,7 @@
       if (pm && app(pm)) items.push([isPinned(pm) ? 'Unpin ' + app(pm).name + ' from sidebar' : 'Pin ' + app(pm).name + ' to sidebar', function () { togglePin(pm); }, 'pin']);
       items.push(['Move earlier', function () { moveItem('w:' + it.id, -1); }, 'chevron_left']);
       items.push(['Move later', function () { moveItem('w:' + it.id, 1); }, 'chevron_right']);
-      if (f.p === 0) items.push([it.zone === 'side' ? 'Move to main area' : 'Move to right column', function () { moveZone(it.id); }, it.zone === 'side' ? 'west' : 'east']);
+      items.push([it.zone === 'side' ? 'Move to main area' : 'Move to right column', function () { moveZone(it.id); }, it.zone === 'side' ? 'west' : 'east']);
       if (it.type === 'item') items.push(['Remove from Focus Hub', function () { unsaveItem(it.ref); }, 'bookmark_remove']);
       items.push(['Edit Home Screen', function () { setEditing(true); }, 'grid']);
       items.push(['-']);
@@ -1115,7 +1086,7 @@
                ['Photo credits', function () { openCredits(); }, 'photo_library']];
     } else {
       title = 'Home Screen';
-      items = [['Add Widget', function () { setEditing(true); openGallery(); }, 'plus'], ['Customize', function () { toast('Customize · icon size and dark/tinted icons'); }, 'grid'], ['Edit Wallpaper', function () { toast('Edit Wallpaper'); }, 'grid'], ['Edit Pages', function () { setEditing(true); toast('Edit Pages · show, hide and reorder pages'); }, 'grid'], ['Edit Home Screen', function () { setEditing(true); }, 'grid']];
+      items = [['Add Widget', function () { setEditing(true); openGallery(); }, 'plus'], ['All modules', function () { openLibrary(); }, 'grid_view'], ['Edit Home Screen', function () { setEditing(true); }, 'grid']];
     }
     S.overlay = 'ctx';
     var fns = [];
@@ -1133,7 +1104,7 @@
     var first = $('[role="menuitem"], [role="menuitemradio"]', m); if (first) first.focus();
     syncInert();
   }
-  /* "Show stats": iOS-style widget preview from an app icon */
+  /* "Show stats": widget preview from a module's menu */
   function openPeek(id, anchor) {
     closeOverlay(true);
     opener = anchor && document.contains(anchor) ? anchor : document.activeElement;
@@ -1149,23 +1120,12 @@
     $('[data-act="peekOpen"]', root).focus();
     syncInert(); updateTitle();
   }
-  function openCtxFor(cell, point) {
-    var dc = cell.getAttribute('data-cell'), parts = dc.split(':');
-    if (parts[0] === 'app' || parts[0] === 'lib') openCtx('app', parts[1], cell.querySelector('.app__ic') || cell, point);
-    else openCtx('w', dc.slice(2), cell, point);
-  }
+  function openCtxFor(cell, point) { openCtx('w', cell.getAttribute('data-cell').slice(2), cell, point); }
   function removeCell(key) {
-    var parts = key.split(':');
-    if (parts[0] === 'app') {
-      var a = app(parts[1]);
-      if (isPinned(a.id)) pinned.splice(pinned.indexOf(a.id), 1), savePins();
-      S.removed[a.id] = 1; refreshAll();
-      toast(a.name + ' moved to the App Library.', 'Undo', function () { delete S.removed[a.id]; refreshAll(); });
-    } else {
-      var f = findItem(parts[1]); if (!f) return;
-      PAGES[f.p].splice(f.i, 1); saveLayout(); refreshAll();
-      toast('Widget removed.', 'Undo', function () { PAGES[f.p].splice(f.i, 0, f.it); saveLayout(); refreshAll(); });
-    }
+    var f = findItem(key.slice(2)); if (!f) return;
+    var snap = snapshot();
+    LAYOUT.splice(f.i, 1); saveLayout(); refreshAll();
+    toast('Widget removed.', 'Undo', function () { restore(snap); });
   }
 
   /* edit (jiggle) mode */
@@ -1181,8 +1141,8 @@
   var WTYPES = APPS.map(function (a) { return a.id; });
   var gal = null;
   function openGallery(o) {
+    setOpener();
     closeOverlay(true);
-    opener = document.activeElement;
     S.pendingStack = '';
     gal = o ? Object.assign({ toStack: '' }, o) : null;
     S.overlay = 'gallery';
@@ -1201,7 +1161,7 @@
       }).join('') : '';
       html = '<div class="sheet__grip" aria-hidden="true"></div><div class="sheet__hd"><h2 id="galH">Add widgets</h2><button type="button" class="icon-btn" data-act="closeOverlay" aria-label="Close"><span class="material-symbols-outlined ico" aria-hidden="true">close</span></button></div>' +
         '<label class="search search--pill"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">search</span><span class="vh">Search widgets</span><input type="search" id="galQ" placeholder="Search Widgets" value="' + esc(root._galQ || '') + '"></label>' +
-        '<p class="muted" style="margin-top:10px;font-size:13px">Every module has a stats widget in Small, Medium and Large. ' + list.length + ' of ' + WTYPES.length + ' shown.</p>' +
+        '<p class="muted" style="margin-top:10px;font-size:13px">New widgets go at the end of the dashboard. Every module has a stats widget. ' + list.length + ' of ' + WTYPES.length + ' modules shown.</p>' +
         '<ul class="gal-grid" id="galGrid">' + dashHtml +
         (savedKeys.length ? '<li class="gal-sec" id="galFocus">From Focus Hub</li>' + savedKeys.map(function (k) {
           return '<li class="gcell"><button type="button" class="gtile" data-act="galPick" data-t="item" data-ref="' + k + '"><span class="gprev" aria-hidden="true">' + widgetBody('item', 'S', { ref: k }) + '</span><b>' + esc(SAVE[k].t) + '</b><small>' + esc(SAVE[k].type) + ' · saved</small></button></li>';
@@ -1236,7 +1196,7 @@
   /* where a widget being added or edited will sit, so the size picker offers that place's sizes */
   function galCtx() {
     if (gal && gal.mode === 'edit') { var f = findItem(gal.wid); if (f) return ctxOf(f.it); }
-    return S.page === 0 && !S.lib ? 'main' : 'sb';
+    return 'main';
   }
   /* small gallery tile previews: KPI and quick-action cards draw themselves; larger panels show an icon */
   var DASH_ICON = { hero: 'pets', trend: 'show_chart', activity: 'history', planning: 'checklist', attention: 'priority_high', sites: 'location_on', team: 'groups', helpcard: 'support_agent' };
@@ -1252,7 +1212,7 @@
     return out;
   }
   function openStackSheet(wid) {
-    closeOverlay(true); opener = document.activeElement; S.overlay = 'stack';
+    setOpener(); closeOverlay(true); S.overlay = 'stack';
     S.stackW = wid || S.stackW || 'w1';
     var f = findItem(S.stackW); if (!f) return; var st = f.it;
     root.innerHTML = '<div class="sheet-wrap" data-act="closeOverlayBg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="stkH"><div class="sheet__grip" aria-hidden="true"></div>' +
@@ -1436,16 +1396,14 @@
   /* item widgets on the home screen that point at a Focus Hub key */
   function itemWidgetsFor(k) {
     var n = 0;
-    PAGES.forEach(function (pg) { pg.forEach(function (x) { if (x.ref === k) n++; if (x.type === 'stack') x.items.forEach(function (e) { if (e && e.ref === k) n++; }); }); });
+    LAYOUT.forEach(function (x) { if (x.ref === k) n++; if (x.type === 'stack') x.items.forEach(function (e) { if (e && e.ref === k) n++; }); });
     return n;
   }
   function removeItemWidgets(k) {
-    PAGES = PAGES.map(function (pg) {
-      return pg.filter(function (x) {
-        if (x.ref === k) return false;
-        if (x.type === 'stack') { x.items = x.items.filter(function (e) { return !(e && e.ref === k); }); x.idx = 0; return x.items.length > 0; }
-        return true;
-      });
+    LAYOUT = LAYOUT.filter(function (x) {
+      if (x.ref === k) return false;
+      if (x.type === 'stack') { x.items = x.items.filter(function (e) { return !(e && e.ref === k); }); x.idx = 0; return x.items.length > 0; }
+      return true;
     });
     saveLayout(); renderHome();
   }
@@ -1678,15 +1636,11 @@
     quick: function () { openSpot(); },
     nc: function () { openNC(); },
     search: function () { openSpot(); },
-    library: function () { navPage('lib'); },
-    libCancel: function () { S.libQ = ''; $('#libQ').value = ''; renderLibrary(); setPage(0); },
+    library: function (el) { openLibrary(el); },
     az: function (el) { var t = $('#lib-' + el.dataset.l); if (t) t.scrollIntoView({ block: 'start' }); },
     edit: function () { setEditing(true); },
     done: function () { setEditing(false); },
     gallery: function () { openGallery(); },
-    page: function (el) { setPage(+el.dataset.p); },
-    prevPage: function () { setPage(S.page - 1); },
-    nextPage: function () { setPage(S.page + 1); },
     stackTo: function (el) { var f = findItem(el.dataset.w); if (!f) return; f.it.idx = +el.dataset.i; renderHome(); var b = $('[data-act="stackTo"][data-w="' + el.dataset.w + '"][data-i="' + el.dataset.i + '"]'); if (b) b.focus(); },
     libAdd: function (el) { openGallery({ type: el.dataset.id, size: 'M', mode: 'add' }); },
     peekOpen: function (el) { openApp(el.dataset.id); },
@@ -1705,15 +1659,18 @@
       S.pendingStack = '';
       if (sf) { var st = sf.it; st.items.push(isItem ? { type: 'item', ref: gal.ref } : gal.type); st.idx = st.items.length - 1; toast(name + ' added to the ' + st.name + ' stack', 'Undo', function () { restore(snap); }); }
       else {
-        var nw = isItem ? { k: 'w', id: newId(), type: 'item', ref: gal.ref, size: gal.size } : { k: 'w', id: newId(), type: gal.type, size: gal.size };
+        var nw = isItem ? { id: newId(), type: 'item', ref: gal.ref, size: gal.size } : { id: newId(), type: gal.type, size: gal.size };
         if (gal.metric) nw.metric = gal.metric;
         if (gal.preset) nw.preset = gal.preset;
         if (gal.type === 'trend') nw.period = 12;
-        var pg = placeNew(nw);
-        toast(name + ' widget added to ' + (pg === 0 ? 'the Command Centre' : 'page ' + (pg + 1)), 'Undo', function () { restore(snap); });
+        LAYOUT.push(nw);   /* new widgets go at the end of the main area; drag or ⋯ moves them to the right column */
+        toast(name + ' widget added to the Command Centre', 'Undo', function () { restore(snap); });
       }
       saveLayout();
       closeOverlay(true); renderHome(); updateTitle();
+      /* show where it landed: scroll the new widget (or the stack) into view and focus it */
+      var landed = $('#homePages [data-cell="w:' + (sf ? sf.it.id : nw.id) + '"]');
+      if (landed) { landed.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); var lb = $('button', landed); if (lb) lb.focus({ preventScroll: true }); }
     },
     stackRm: function (el) { var st = findItem(S.stackW).it; if (st.items.length < 2) return; st.items.splice(+el.dataset.i, 1); st.idx = 0; saveLayout(); renderHome(); openStackSheet(S.stackW); },
     stackUp: function (el) { var st = findItem(S.stackW).it, i = +el.dataset.i, t = st.items.splice(i, 1)[0]; st.items.splice(i - 1, 0, t); saveLayout(); renderHome(); openStackSheet(S.stackW); },
@@ -1729,11 +1686,10 @@
       openApp(g.app, o);
     },
     nClear: function () { NOTIFS.length = 0; $('#bellBtn .badge').hidden = true; $('#bellBtn').setAttribute('aria-label', 'Notification Center'); renderNC(); },
-    home: function () { closeApp(true); navPage(0); },
-    navPage: function (el) { navPage(el.dataset.p); },
+    home: function () { goHome(); },
     drawer: function () { if (S.drawer) closeDrawer(); else openDrawer(); },
     drawerClose: function () { closeDrawer(); },
-    sideToggle: function () { try { localStorage.setItem(SIDE_KEY, sideExpanded() ? 'rail' : 'open'); } catch (e) { /* storage blocked */ } applySideMode(); $('#sideToggle').focus(); },
+    sideToggle: function () { toggleSide(); },
     pinPicker: function () { openPicker(); },
     reportBug: function () { openApp('help', { form: 1 }); },
     heroScan: function () { toast('Scan · point the camera at a tag, enclosure QR or microchip reader.'); },
@@ -1797,39 +1753,27 @@
   document.addEventListener('pointercancel', function () { if (rz) endResize(true); }, true);
 
   /* ================= REORDER =================
-     Edit mode: press and drag any icon or widget. A lifted ghost follows the pointer, the grid
-     shifts live to show the drop slot, holding at a screen edge for ~0.5 s changes page, dropping on the
+     Edit mode: press and drag any widget. A lifted ghost follows the pointer, the grid shifts live to
+     show the drop slot, holding near the top or bottom edge scrolls the dashboard, dropping on the
      sidebar pins the module, and dropping a widget on the middle of a stack adds it to the stack.
-     Keyboard: Alt + arrow keys on an item, or Move earlier / later in its ⋯ menu. */
-  function itemKey(x) { return (x.k === 'a' ? 'app:' : 'w:') + x.id; }
-  function isHidden(x) { return x.k === 'a' && S.removed[x.id]; }
-  /* keyboard move: within the same dashboard area (main / right column), else across springboard pages */
+     Keyboard: Alt + arrow keys on a widget, or Move earlier / later in its ⋯ menu. */
+  /* keyboard move: swap with the neighbour in the same dashboard area (main area or right column) */
   function moveItem(key, dir) {
-    var flat = [], at0 = null;
-    PAGES.forEach(function (pg, p) { pg.forEach(function (x, i) { if (itemKey(x) === key) at0 = { p: p, x: x }; }); });
-    if (!at0) return;
-    var dashZone = at0.p === 0 ? (at0.x.zone || 'main') : null;
-    PAGES.forEach(function (pg, p) {
-      pg.forEach(function (x, i) {
-        if (isHidden(x)) return;
-        if (dashZone !== null ? (p === 0 && (x.zone || 'main') === dashZone) : p > 0) flat.push({ p: p, i: i, x: x });
-      });
-    });
-    var at = flat.map(function (f) { return itemKey(f.x); }).indexOf(key);
-    var to = at + dir;
-    if (to < 0 || to >= flat.length) { toast(dir < 0 ? 'Already first' : 'Already last'); return; }
-    var snap = snapshot(), a = flat[at], b = flat[to];
-    if (a.p === b.p) { PAGES[a.p][a.i] = b.x; PAGES[b.p][b.i] = a.x; }
-    else { PAGES[a.p].splice(a.i, 1); if (dir > 0) PAGES[b.p].splice(0, 0, a.x); else PAGES[b.p].push(a.x); }
-    PAGES = PAGES.filter(function (pg, i) { return i === 0 || pg.length; });
+    var wid = key.slice(2), f = findItem(wid); if (!f) return;
+    var zone = f.it.zone || 'main';
+    var same = LAYOUT.map(function (x, i) { return (x.zone || 'main') === zone ? i : -1; }).filter(function (i) { return i > -1; });
+    var at = same.indexOf(f.i), to = at + dir;
+    if (to < 0 || to >= same.length) { toast(dir < 0 ? 'Already first' : 'Already last'); return; }
+    var snap = snapshot(), j = same[to];
+    LAYOUT[f.i] = LAYOUT[j]; LAYOUT[j] = f.it;
     saveLayout(); renderHome();
     var cell = $('#homePages [data-cell="' + key + '"]');
-    if (cell) { var pgEl = cell.closest('.page'); if (pgEl) setPage(+pgEl.dataset.page); var fb = cell.querySelector('button'); if (fb) fb.focus({ preventScroll: false }); }
+    if (cell) { var fb = cell.querySelector('button'); if (fb) fb.focus({ preventScroll: false }); }
     toast('Moved ' + (dir < 0 ? 'earlier' : 'later'), 'Undo', function () { restore(snap); });
   }
   /* keyboard alternative to dragging between the dashboard's main area and right column */
   function moveZone(wid) {
-    var f = findItem(wid); if (!f || f.p !== 0) return;
+    var f = findItem(wid); if (!f) return;
     var snap = snapshot(), to = f.it.zone === 'side' ? 'main' : 'side';
     if (to === 'side') f.it.zone = 'side'; else delete f.it.zone;
     saveLayout(); renderHome();
@@ -1840,7 +1784,7 @@
   var dg = null, pend = null, press = null;
   var DRAG_THRESHOLD = 6;
   function dragCandidate(t) {
-    if (!t || !t.closest || t.closest('.rs, .rm, .pin-b, .more, .app__more, .stack-dots, select')) return null;
+    if (!t || !t.closest || t.closest('.rs, .rm, .more, .stack-dots, select')) return null;
     return t.closest('#homePages [data-cell]');
   }
   function beginDrag(cell, e) {
@@ -1851,13 +1795,12 @@
     document.body.appendChild(ghost);
     cell.classList.add('is-drag-src');
     ui.classList.add('is-dragging'); document.body.classList.add('is-dragging');
-    dg = { key: cell.dataset.cell, el: cell, ghost: ghost, dx: e.clientX - r.left, dy: e.clientY - r.top, snap: snapshot(), edgeDir: 0, edgeTimer: null, merge: null, last: null, pin: null, scroll: 0, scrollTimer: null };
+    dg = { key: cell.dataset.cell, el: cell, ghost: ghost, dx: e.clientX - r.left, dy: e.clientY - r.top, snap: snapshot(), merge: null, last: null, pin: null, scroll: 0, scrollTimer: null };
     clearTimeout(lpTimer); drag = null;
     moveDrag(e);
   }
-  /* which module a dragged cell would pin: an app icon, or a module / quick-action / KPI widget */
+  /* which module a dragged widget would pin: a module, quick-action, KPI or panel widget */
   function dragModule(key) {
-    if (key.indexOf('app:') === 0) return key.slice(4);
     var f = findItem(key.slice(2)); if (!f) return null;
     var it = f.it, t = it.type === 'stack' ? entryType(it.items[it.idx]) : it.type;
     if (DASHW[t]) return t === 'kpi' || t === 'action' || t === 'trend' ? dashOpen(it) : DASHW[t].open || null;
@@ -1865,7 +1808,7 @@
   }
   function moveDrag(e) {
     dg.ghost.style.transform = 'translate(' + (e.clientX - dg.dx) + 'px,' + (e.clientY - dg.dy) + 'px) scale(1.05)';
-    edgePaging(e); edgeScroll(e);
+    edgeScroll(e);
     var under = document.elementFromPoint(e.clientX, e.clientY);
     var pins = $('#snPins');
     setMerge(null); pins.classList.remove('is-drop'); dg.pin = null;
@@ -1876,23 +1819,22 @@
       if (mod) { pins.classList.add('is-drop'); dg.pin = mod; }
       return;
     }
-    var page = under.closest('.page.is-current'); if (!page || page.id === 'libPage') return;
-    var isApp = dg.key.indexOf('app:') === 0;
+    var board = under.closest('#homePages'); if (!board) return;
     var t = under.closest('[data-cell]');
-    if (t && t !== dg.el && t.parentElement && t.parentElement.classList.contains('sb-grid')) {
-      if (t.classList.contains('wg--stack') && !isApp && !dg.el.classList.contains('wg--stack') && !DASHW[(findItem(dg.key.slice(2)) || { it: {} }).it.type]) {
+    if (t && t !== dg.el && t.parentElement && t.parentElement.classList.contains('dz')) {
+      if (t.classList.contains('wg--stack') && !dg.el.classList.contains('wg--stack') && !DASHW[(findItem(dg.key.slice(2)) || { it: {} }).it.type]) {
         var r = t.getBoundingClientRect();
         if (Math.abs(e.clientX - (r.left + r.width / 2)) < r.width * 0.25 && Math.abs(e.clientY - (r.top + r.height / 2)) < r.height * 0.25) { setMerge(t); return; }
       }
       insertBy(t, e);
     } else if (!t) {
-      var grid = under.closest('.sb-grid') || $('.sb-grid', page);
+      var grid = under.closest('.dz');
       if (grid && grid.lastElementChild !== dg.el) { grid.appendChild(dg.el); dg.last = null; }
     }
   }
   /* the dashboard scrolls: hold near its top or bottom edge while dragging to scroll it */
   function edgeScroll(e) {
-    var pg = $('.page.is-current'); if (!pg) return;
+    var pg = $('#homePages');
     var r = pg.getBoundingClientRect(), dir = e.clientY < r.top + 48 ? -1 : e.clientY > r.bottom - 48 ? 1 : 0;
     dg.scroll = dir;
     if (dir && !dg.scrollTimer) dg.scrollTimer = setInterval(function () { if (!dg || !dg.scroll) return; pg.scrollTop += dg.scroll * 14; }, 16);
@@ -1906,57 +1848,26 @@
     t.parentElement.insertBefore(dg.el, before ? t : t.nextSibling);
   }
   function setMerge(t) { if (dg.merge && dg.merge !== t) dg.merge.classList.remove('is-merge-target'); dg.merge = t; if (t) t.classList.add('is-merge-target'); }
-  function edgePaging(e) {
-    var pw = $('#pagesWrap').getBoundingClientRect();
-    var inY = e.clientY > pw.top && e.clientY < pw.bottom;
-    var dir = !inY ? 0 : e.clientX < pw.left + 24 && e.clientX >= pw.left ? -1 : e.clientX > pw.right - 24 ? 1 : 0;
-    if (dir === dg.edgeDir) return;
-    clearTimeout(dg.edgeTimer); dg.edgeDir = dir;
-    if (dir) dg.edgeTimer = setTimeout(function () { flipPage(dir); }, 500);
-  }
-  function flipPage(dir) {
-    if (!dg) return;
-    var target = S.page + dir;
-    if (target < 0) return;
-    if (target >= S.nPages) {
-      $('#homePages').insertAdjacentHTML('beforeend', '<section class="page" data-page="' + S.nPages + '" aria-label="Home page ' + (S.nPages + 1) + '"><div class="sb-grid"></div></section>');
-      S.nPages++; $('#libPage').dataset.page = S.nPages;
-    }
-    setPage(target);
-    var grid = $('.page.is-current .sb-grid'); if (grid && dg.el.closest('#homePages')) { grid.appendChild(dg.el); dg.last = null; }
-    dg.edgeDir = 0;
-  }
   /* the DOM order after a drag becomes the layout; a cell's grid sets its dashboard area */
   function commitFromDom() {
-    var byKey = {}, home = {};
-    PAGES.forEach(function (pg, p) { pg.forEach(function (x) { byKey[itemKey(x)] = x; home[itemKey(x)] = p; }); });
-    var pages = $$('#homePages .page').map(function (sec, pi) {
-      var out = [];
-      $$('.sb-grid', sec).forEach(function (g) {
-        $$('[data-cell]', g).filter(function (c) { return c.parentElement === g; }).forEach(function (c) {
-          var x = byKey[c.dataset.cell] || (c.dataset.cell.indexOf('app:') === 0 ? { k: 'a', id: c.dataset.cell.slice(4) } : null);
-          if (!x) return;
-          if (pi === 0 && g.dataset.zone === 'side') x.zone = 'side'; else delete x.zone;
-          out.push(x);
-        });
+    var byKey = {};
+    LAYOUT.forEach(function (x) { byKey['w:' + x.id] = x; });
+    var out = [];
+    $$('#homePages .dz').forEach(function (g) {
+      $$('[data-cell]', g).filter(function (c) { return c.parentElement === g; }).forEach(function (c) {
+        var x = byKey[c.dataset.cell]; if (!x) return;
+        if (g.dataset.zone === 'side') x.zone = 'side'; else delete x.zone;
+        out.push(x);
       });
-      return out;
     });
-    /* keep hidden (removed) apps in the model, on the page they came from */
-    var seen = {};
-    pages.forEach(function (pg) { pg.forEach(function (x) { seen[itemKey(x)] = 1; }); });
-    Object.keys(byKey).forEach(function (k) {
-      if (seen[k] || (dg.merge && k === dg.key)) return;
-      var p = Math.min(home[k], pages.length - 1);
-      (pages[p] || pages[pages.length - 1]).push(byKey[k]);
-    });
-    PAGES = pages.filter(function (pg, i) { return i === 0 || pg.length; });
+    if (out.length !== LAYOUT.length) return false;
+    LAYOUT = out;
     return true;
   }
   function endDrag(cancel) {
     if (!dg) return;
     var d = dg; dg = null;
-    clearTimeout(d.edgeTimer); clearInterval(d.scrollTimer);
+    clearInterval(d.scrollTimer);
     d.ghost.remove(); d.el.classList.remove('is-drag-src'); ui.classList.remove('is-dragging'); document.body.classList.remove('is-dragging'); $('#snPins').classList.remove('is-drop');
     if (d.merge) d.merge.classList.remove('is-merge-target');
     suppress = true; setTimeout(function () { suppress = false; }, 50);
@@ -1970,8 +1881,7 @@
       if (sf && wf) {
         sf.it.items.push(wf.it.type === 'item' ? { type: 'item', ref: wf.it.ref } : wf.it.type);
         sf.it.idx = sf.it.items.length - 1;
-        PAGES[wf.p].splice(wf.i, 1);
-        PAGES = PAGES.filter(function (pg, i) { return i === 0 || pg.length; });
+        LAYOUT.splice(wf.i, 1);
         merged = true;
       }
     }
@@ -2007,13 +1917,13 @@
   document.addEventListener('pointerup', function () { pend = null; press = null; if (dg) endDrag(false); }, true);
   document.addEventListener('pointercancel', function () { pend = null; press = null; if (dg) endDrag(true); }, true);
 
-  /* gestures: swipe pages, swipe stack, pull-down search, swipe-down NC, long-press menu, swipe-up home */
+  /* gestures: swipe a stack, swipe down on the header for the Notification Center, long-press menu */
   var drag = null, lpTimer = null, suppress = false;
   ui.addEventListener('pointerdown', function (e) {
     if (e.button > 0) return;
     drag = { x: e.clientX, y: e.clientY, t: e.target, moved: false };
-    var cell = e.target.closest('.app-cell, .wg, .lib-row');
-    var inHome = e.target.closest('#pages');
+    var cell = e.target.closest('.wg');
+    var inHome = e.target.closest('#homePages');
     clearTimeout(lpTimer);
     if (!S.editing && !S.app && !S.overlay && inHome && !e.target.closest('input, .az')) {
       lpTimer = setTimeout(function () {
@@ -2032,12 +1942,10 @@
     suppress = true;
     if (S.app || S.overlay) return;
     if (d.t.closest('.status') && dy > 50) { openNC(); return; }
-    if (!d.t.closest('#pages')) return;
+    if (!d.t.closest('#homePages')) return;
     if (S.editing && d.t.closest('#homePages [data-cell]')) return;
     var st = d.t.closest('.wg--stack');
-    if (st && ay > 30 && ay > ax) { rotateStack(st.dataset.cell.slice(2), dy < 0 ? 1 : -1); return; }
-    if (ax > 60 && ax > ay) { if (dx > 0) { if (S.page === 0) openNC(); else setPage(S.page - 1); } else setPage(S.page + 1); return; }
-    if (dy > 70 && ax < 40 && S.page < S.nPages) openSpot();
+    if (st && ay > 30 && ay > ax) rotateStack(st.dataset.cell.slice(2), dy < 0 ? 1 : -1);
   });
   ui.addEventListener('pointercancel', function () { clearTimeout(lpTimer); drag = null; });
   document.addEventListener('click', function (e) { if (suppress) { suppress = false; e.stopPropagation(); e.preventDefault(); } }, true);
@@ -2047,9 +1955,9 @@
   }, { passive: false });
   ui.addEventListener('contextmenu', function (e) {
     if (S.editing || S.app || S.overlay) return;
-    if (!e.target.closest('#pages')) return;
+    if (!e.target.closest('#homePages')) return;
     e.preventDefault();
-    var cell = e.target.closest('.app-cell, .wg, .lib-row');
+    var cell = e.target.closest('.wg');
     if (cell) openCtxFor(cell); else openCtx('empty', null, null, { x: e.clientX, y: e.clientY });
   });
 
@@ -2077,6 +1985,7 @@
   document.addEventListener('keydown', function (e) {
     if (rz && e.key === 'Escape') { endResize(true); return; }
     if (dg && e.key === 'Escape') { endDrag(true); return; }
+    if (ld && ld.on && e.key === 'Escape') { endLibDrag(); suppress = true; return; }
     var pinEl = e.altKey && e.target.closest && e.target.closest('#snPins [data-pin-item]');
     if (pinEl && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); movePin(pinEl.dataset.pinItem, e.key === 'ArrowUp' ? -1 : 1); return; }
     if (S.drawer && e.key === 'Escape' && !S.overlay) { closeDrawer(); return; }
@@ -2113,7 +2022,7 @@
       e.preventDefault(); items[(j + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); return;
     }
     if ((e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) && e.target.closest) {
-      var cell = e.target.closest('.app-cell, .wg, .lib-row'); if (cell) { e.preventDefault(); openCtxFor(cell); return; }
+      var cell = e.target.closest('#homePages .wg'); if (cell) { e.preventDefault(); openCtxFor(cell); return; }
     }
     if (e.key === 'Escape') {
       if (S.overlay) { closeOverlay(); return; }
@@ -2131,9 +2040,10 @@
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
     if (S.overlay === 'ctx' && e.key === 'Tab') { e.preventDefault(); }
-    if (!S.app && !S.overlay && (e.key === 'PageDown' || e.key === 'PageUp')) { e.preventDefault(); setPage(S.page + (e.key === 'PageDown' ? 1 : -1)); }
+    /* Ctrl+\ or [ collapses / expands the sidebar (desktop and tablet; never while typing) */
+    var typing = e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]');
+    if (!typing && !S.overlay && !S.drawer && !e.altKey && !e.metaKey && ((e.ctrlKey && e.key === '\\') || (!e.ctrlKey && e.key === '['))) { if (bp() !== 'phone') { e.preventDefault(); toggleSide(); } }
   });
-  $('#libQ').addEventListener('input', function (e) { S.libQ = e.target.value; renderLibrary(); });
   $('#noteQ').addEventListener('input', function (e) { S.noteQ = e.target.value; renderNotesScreen(); });
   $('#noteSort').addEventListener('change', function (e) { S.noteSort = e.target.value; renderNotesScreen(); });
   $('#spQ').addEventListener('input', function (e) { S.spQ = e.target.value; renderSpeciesGrid(); });
