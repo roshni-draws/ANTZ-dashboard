@@ -99,7 +99,7 @@
     action: { name: 'Quick action', def: 'S', desc: 'A module shortcut with its pending count.' },
     activity: { name: 'Recent activity', def: 'XL', open: 'reports', desc: 'The latest records across modules, with status.' },
     planning: { name: 'Planning', def: 'L', open: 'administer', desc: 'Progress towards this week’s targets.' },
-    attention: { name: 'Needs attention', def: 'L', open: 'administer', desc: 'Overdue and pending work, by module.' },
+    attention: { name: 'Today', def: 'L', open: 'administer', desc: 'What needs doing today: overdue and pending work, by module.' },
     sites: { name: 'Sites', def: 'L', desc: 'Every site with its animals and audit score. Pick one to re-scope the dashboard.' },
     team: { name: 'On duty', def: 'M', open: 'users', desc: 'Who is working today.' },
     helpcard: { name: 'Need help?', def: 'S', open: 'help', desc: 'A shortcut to the Help Desk.' }
@@ -460,17 +460,29 @@
       return hd(type) + '<small>2 open · 1 in progress</small>' + tk(5) + '<span class="tag">+ Raise a ticket</span>';
     },
     stats: statsBody,
-    /* Needs attention: overdue then pending work; each row opens its module */
-    attention: function (type, size) {
+    /* Today: what needs doing. A date tile, an Overdue / Pending switch (saved with the layout as it.tab)
+       and one tinted card per task; each card opens its module. */
+    attention: function (type, size, it) {
       if (!DATA) return '';
+      it = it || {};
       size = size === 'XL' ? 'L' : size === 'W' ? 'M' : size;
-      var at = DATA.attention(S.site);
-      var row = function (r, kind) { var a = app(r[2]); return '<button type="button" class="att__row" data-open="' + r[2] + '"><span class="gl" ' + tileStyle(a) + '>' + glyph(a) + '</span><span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + '</small></span><span class="att__n att__n--' + kind + '">' + fmt(r[1]) + '</span></button>'; };
-      var head = '<span class="wg__hd"><span class="gl" style="--f:var(--md-sys-color-tertiary)"><span class="material-symbols-outlined" aria-hidden="true">priority_high</span></span><span class="ell">Needs attention</span></span>';
-      if (size === 'S') return head + '<span class="wg__big">' + fmt(at.total) + '</span><span class="wg__lbl">overdue tasks</span>' + row(at.overdue[0], 'over');
-      var list = '<span class="att__grp">Overdue <b>' + fmt(at.total) + '</b></span>' + at.overdue.slice(0, size === 'M' ? 3 : 5).map(function (r) { return row(r, 'over'); }).join('');
-      if (size !== 'M') list += '<span class="att__grp">Pending</span>' + at.pending.slice(0, 4).map(function (r) { return row(r, 'pend'); }).join('');
-      return head + '<span class="att">' + list + '</span>';
+      var at = DATA.attention(S.site), tab = it.tab === 'pend' ? 'pend' : 'over';
+      var dm = /(\d{1,2})\s+([A-Za-z]{3})/.exec(CFG.user.date || '') || [0, new Date().getDate(), new Date().toLocaleString('en', { month: 'short' })];
+      var head = '<span class="att__hd"><span class="att__ttl"><b>Today</b><small>What needs doing</small></span>' +
+        '<span class="att__date" aria-label="' + esc(dm[1] + ' ' + dm[2]) + '"><span aria-hidden="true">' + esc(dm[2].toUpperCase()) + '</span><b aria-hidden="true">' + esc(dm[1]) + '</b></span></span>';
+      var card = function (r) {
+        var a = app(r[2]);
+        return '<button type="button" class="att__row" data-open="' + r[2] + '"><span class="att__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span>' +
+          '<span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + '</small></span><span class="att__n">' + fmt(r[1]) + '</span>' +
+          '<span class="vh">, ' + (tab === 'over' ? 'overdue' : 'pending') + '</span></button>';
+      };
+      if (size === 'S') return head + '<span class="att__sum"><span class="wg__big">' + fmt(at.total) + '</span><span class="wg__lbl">overdue tasks</span></span>' + (at.overdue[0] ? card(at.overdue[0]) : '');
+      var seg = function (k, label, n) {
+        return '<button type="button" class="att__tab' + (tab === k ? ' is-on' : '') + '" data-act="attTab" data-w="' + esc(it.id || '') + '" data-tab="' + k + '" aria-pressed="' + (tab === k) + '">' + label + '<span class="att__cnt">' + n + '</span></button>';
+      };
+      var rows = tab === 'over' ? at.overdue : at.pending;
+      return head + '<span class="att__seg" role="group" aria-label="Show tasks">' + seg('over', 'Overdue', at.overdue.length) + seg('pend', 'Pending', at.pending.length) + '</span>' +
+        '<span class="att">' + (rows.length ? rows.slice(0, size === 'M' ? 2 : rows.length).map(card).join('') : '<span class="att__none">Nothing ' + (tab === 'over' ? 'overdue' : 'pending') + '. Nice work.</span>') + '</span>';
     }
   };
   /* ================= COMMAND CENTRE WIDGETS =================
@@ -710,7 +722,7 @@
     var target = type === 'item' ? 'data-item="' + ref + '"' : 'data-open="' + (dash ? dashOpen(it) : type) + '"';
     var statsCls = dash ? ' wg--' + type : app(type) && !app(type).widget ? ' wg--stats wg--' + (app(type).chart || 'columns') : '';
     var bodySize = dash ? sz : sz === 'XL' ? 'L' : sz === 'W' ? 'M' : sz;
-    var opts = { ref: ref, metric: it.metric, preset: it.preset, period: it.period, id: it.id, ctx: ctx };
+    var opts = { ref: ref, metric: it.metric, preset: it.preset, period: it.period, tab: it.tab, id: it.id, ctx: ctx };
     /* panels with their own buttons, links or filters are a plain container; the rest are one big button */
     var body = dash && type !== 'kpi' && type !== 'action'
       ? '<div class="wg__btn wg__body">' + widgetBody(type, bodySize, opts) + '</div>'
@@ -1641,6 +1653,11 @@
     edit: function () { setEditing(true); },
     done: function () { setEditing(false); },
     gallery: function () { openGallery(); },
+    attTab: function (el) {
+      var f = findItem(el.dataset.w); if (!f) return;
+      f.it.tab = el.dataset.tab; saveLayout(); renderHome();
+      var b = $('[data-act="attTab"][data-w="' + el.dataset.w + '"][data-tab="' + el.dataset.tab + '"]'); if (b) b.focus({ preventScroll: true });
+    },
     stackTo: function (el) { var f = findItem(el.dataset.w); if (!f) return; f.it.idx = +el.dataset.i; renderHome(); var b = $('[data-act="stackTo"][data-w="' + el.dataset.w + '"][data-i="' + el.dataset.i + '"]'); if (b) b.focus(); },
     libAdd: function (el) { openGallery({ type: el.dataset.id, size: 'M', mode: 'add' }); },
     peekOpen: function (el) { openApp(el.dataset.id); },

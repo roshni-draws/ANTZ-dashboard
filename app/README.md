@@ -39,7 +39,7 @@ pill, then panels that are all widgets (move, resize, remove, add back, ⋯ menu
 | `action` (`preset`) | Pale module-tinted card with a pending count: `vacc`, `deworm`, `approvals`, `help`, `lab`, `necropsy` |
 | `activity` | Recent activity table (type, details with photo, site, status pill, date); cards when narrow |
 | `planning` | Progress bars: vaccination and deworming rounds, licences, audit target |
-| `attention` | Overdue and pending work by module |
+| `attention` | **Today**: a date tile, an Overdue / Pending switch (saved with the layout) and one card per task with its count; each card opens its module |
 | `sites` | Every site with animals, audit score and its change; picking one re-scopes the dashboard |
 | `team` | Who is on duty, with role tags |
 | `helpcard` | "Need help?" with a Contact Help Desk button |
