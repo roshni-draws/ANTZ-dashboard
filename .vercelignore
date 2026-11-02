@@ -1,8 +1,8 @@
-# Vercel shows one design: the Style 6 Command Centre (app/style6.html).
+# Vercel shows one design: the Style 6 Command Centre (app/index.html).
 # Every other page stays in the repo for reference but is not deployed.
 /*
 !/vercel.json
 !/app
 /app/*
-!/app/style6.html
+!/app/index.html
 !/app/config.js
