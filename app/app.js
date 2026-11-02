@@ -8,6 +8,7 @@
 (function () {
   'use strict';
   var CFG = window.ANTZ_CONFIG;
+  var KIT = window.ANTZ_KIT;   /* widget-kit.js: shared cell frame, sizes and the Notes widget (also used by widgets.html) */
 
   /* ================= HELPERS ================= */
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -44,6 +45,12 @@
   function reg(k, meta) { if (!SAVE[k]) SAVE[k] = Object.assign({ liked: false, bm: false, folder: '' }, meta); return SAVE[k]; }
   function regAnimal(si, ai) { var sp = SPECIES[si], a = animalsFor(sp)[ai]; return reg('an:' + si + ':' + ai, { type: 'Animal', t: a.n + ' · ' + a.id, sub: sp.n, go: { app: 'collections', level: 'animal', species: si, animal: ai } }); }
   SPECIES.forEach(function (s) { reg('sp:' + s.i, { type: 'Species', t: s.n, sub: s.s, go: { app: 'collections', level: 'species', species: s.i } }); });
+  /* notes written in the app (quick capture or the composer) are kept in the browser and added after the sample notes,
+     so the Focus Hub keys of the sample notes (nt:<index>) never shift */
+  var NOTES_KEY = 'antz-notes-v1', QUICK_COLL = 'Quick notes';
+  (function () { var mine = recall(NOTES_KEY); if (Array.isArray(mine)) mine.forEach(function (n) { if (n && n.t) NOTES.push(n); }); })();
+  if (NOTE_COLLS.indexOf(QUICK_COLL) < 0) NOTE_COLLS.splice(1, 0, QUICK_COLL);
+  KIT.notes.TYPES.forEach(function (t) { if (NOTE_TYPES.indexOf(t) < 0) NOTE_TYPES.push(t); });
   NOTES.forEach(function (n, i) { reg('nt:' + i, { type: 'Note', t: n.t, sub: n.coll + ' · ' + n.d, go: { app: 'notes' } }); });
   ANN.forEach(function (a, i) { reg('ac:' + i, { type: 'Announcement', t: a.t, sub: a.by + ' · ' + a.d, go: { app: 'announcements', ann: i } }); });
   D.saved.forEach(function (x) {
@@ -454,12 +461,8 @@
       if (size === 'M') return hd(type) + duo + '<span class="wg__thumbs"><span class="ph"></span><span class="ph"></span><span class="ph"></span><span class="ph"></span><small style="align-self:center">Recently saved</small></span>';
       return hd(type) + duo + '<small>Recently saved</small><span class="wg__list">' + saved.map(function (k) { return '<span><span class="ph" style="width:28px;height:28px"></span><span class="ell">' + esc(SAVE[k].t) + '</span></span>'; }).join('') + '</span>';
     },
-    notes: function (type, size) {
-      var n = function (k) { return NOTES.slice(0, k).map(function (x) { return '<span class="mini-note" data-tone="' + x.type + '"><b>' + esc(x.t) + '</b><small>' + esc(x.type + ' · ' + x.d) + '</small></span>'; }).join(''); };
-      if (size === 'S') return hd(type) + '<span class="wg__big">7</span><small>notes · 3 new this week</small><b class="wg__t">' + esc(NOTES[0].t) + '</b>';
-      if (size === 'M') return hd(type) + '<span class="wg__row"><span class="wg__col" style="flex:0 0 32%"><span class="wg__big">7</span><small>notes in 4 collections</small></span><span class="wg__col">' + n(2) + '</span></span>';
-      return hd(type) + '<small>4 collections · 7 notes</small><span class="wg__col">' + n(4) + '</span>';
-    },
+    /* Notes: a shortcut for writing notes (renderer in widget-kit.js, shared with widgets.html) */
+    notes: function (type, size, it) { return KIT.notes.render(size, notesModel(it)); },
     collections: function (type, size) {
       var m = siteMetrics(), sp = m ? fmt(m.species) : '2,411', an = m ? fmt(m.animals) : '110,020';
       var nw = DATA ? DATA.moduleStats('animals', S.site).k[0] : '643';
@@ -712,10 +715,7 @@
   var SZ = ['S', 'M', 'L', 'W', 'XL'], SZ_NAME = { S: 'Small', M: 'Medium', L: 'Large', W: 'Wide', XL: 'Extra large' };
   var SZ_FALLBACK = { XL: ['L', 'W', 'M', 'S'], W: ['M', 'L', 'S'], L: ['M', 'S'], M: ['S', 'L'], S: ['M'] };
   function bp() { var w = window.innerWidth; return w <= 640 ? 'phone' : w < 1240 ? 'tab' : 'desk'; }
-  function spansFor(ctx) {
-    if (ctx === 'side') return { S: [1, 2], M: [1, 3], L: [1, 4] };
-    return bp() === 'phone' ? { S: [1, 2], M: [2, 2], W: [2, 3], L: [2, 4] } : { S: [1, 2], M: [2, 2], L: [2, 4], W: [4, 2], XL: [4, 4] };
-  }
+  function spansFor(ctx) { return KIT.spans(ctx, bp() === 'phone'); }
   function sizesFor(ctx) { var sp = spansFor(ctx); return SZ.filter(function (s) { return sp[s]; }); }
   function eff(size, ctx) {
     var ok = sizesFor(ctx || 'main'); if (ok.indexOf(size) > -1) return size;
@@ -745,20 +745,18 @@
       return '<button type="button" data-act="stackTo" data-w="' + it.id + '" data-i="' + i + '" aria-label="Show ' + esc(entryName(t)) + '"' + (i === it.idx ? ' aria-current="true"' : '') + '></button>';
     }).join('') + '</div>' : '';
     var target = type === 'item' ? 'data-item="' + ref + '"' : 'data-open="' + (dash ? dashOpen(it) : type) + '"';
-    var statsCls = dash ? ' wg--' + type : app(type) && !app(type).widget ? ' wg--stats wg--' + (app(type).chart || 'columns') : '';
-    var bodySize = dash ? sz : sz === 'XL' ? 'L' : sz === 'W' ? 'M' : sz;
+    var statsCls = dash ? ' wg--' + type : type === 'notes' ? ' wg--notes' : app(type) && !app(type).widget ? ' wg--stats wg--' + (app(type).chart || 'columns') : '';
+    /* Notes keeps its own XL / W layouts; other module widgets draw XL as L and W as M */
+    var bodySize = dash || type === 'notes' ? sz : sz === 'XL' ? 'L' : sz === 'W' ? 'M' : sz;
     var opts = { ref: ref, metric: it.metric, preset: it.preset, period: it.period, tab: it.tab, id: it.id, ctx: ctx };
-    /* panels with their own buttons, links or filters are a plain container; the rest are one big button */
-    var body = dash && type !== 'kpi' && type !== 'action'
-      ? '<div class="wg__btn wg__body">' + widgetBody(type, bodySize, opts) + '</div>'
-      : '<button type="button" class="wg__btn" ' + target + '>' + widgetBody(type, bodySize, opts) + '<span class="vh">' + (sevCls === ' sev--critical' ? ', urgent' : sevCls === ' sev--high' ? ', high priority' : '') + ', open ' + esc(dash ? app(dashOpen(it)).name : name) + (stack ? '. ' + esc(it.name) + ' stack, ' + (it.idx + 1) + ' of ' + it.items.length : '') + '</span></button>';
     var tint = type === 'action' && ACTIONS[it.preset] ? ' style="--f:' + app(ACTIONS[it.preset].module).colour + '"' : '';
     var sevCls = type === 'action' && ACTIONS[it.preset] && siteMetrics() ? ' sev--' + actionSev(ACTIONS[it.preset], siteMetrics()).sev : type === 'kpi' && kpiCritical(it.metric) ? ' sev--critical' : '';
-    return '<div class="wg wg--' + sz + (stack ? ' wg--stack' : '') + (type === 'item' ? ' wg--item' : '') + statsCls + sevCls + '" data-cell="w:' + it.id + '"' + tint + '>' +
-      body + dots +
-      '<button type="button" class="more" data-more="w:' + it.id + '" aria-haspopup="menu" aria-label="More options for ' + esc(label) + '">' + icon('more') + '</button>' +
-      '<button type="button" class="rm" data-remove="w:' + it.id + '" aria-label="Remove ' + esc(label) + '">−</button>' +
-      '<button type="button" class="rs" data-resize="' + it.id + '" aria-label="Resize ' + esc(label) + ', now ' + SZ_NAME[sz] + '. Drag the corner, or use the arrow keys"></button></div>';
+    /* panels with their own buttons, links, filters or fields are a plain container; the rest are one big button */
+    var body = (dash && type !== 'kpi' && type !== 'action') || type === 'notes'
+      ? '<div class="wg__btn wg__body">' + widgetBody(type, bodySize, opts) + '</div>'
+      : '<button type="button" class="wg__btn" ' + target + '>' + widgetBody(type, bodySize, opts) + '<span class="vh">' + (sevCls === ' sev--critical' ? ', urgent' : sevCls === ' sev--high' ? ', high priority' : '') + ', open ' + esc(dash ? app(dashOpen(it)).name : name) + (stack ? '. ' + esc(it.name) + ' stack, ' + (it.idx + 1) + ' of ' + it.items.length : '') + '</span></button>';
+    return KIT.frame({ id: it.id, size: sz, sizeName: SZ_NAME[sz], label: label, body: body, dots: dots, style: tint,
+      cls: (stack ? ' wg--stack' : '') + (type === 'item' ? ' wg--item' : '') + statsCls + sevCls });
   }
   /* dashboard heading: title, active site + date, sync status; on phones a row of pinned-module chips */
   function dashHeader() {
@@ -775,6 +773,7 @@
     var keep = document.activeElement && document.activeElement.closest && document.activeElement.closest('#homePages [data-cell]');
     var keepSel = keep ? keep.getAttribute('data-cell') : null;
     var keepCls = keep ? document.activeElement.className : '';
+    var keepCaret = keep && document.activeElement.matches('input[type="text"]') ? document.activeElement.selectionStart : null;
     var board = $('#homePages'), keepScroll = board.scrollTop;
     var main = '', side = '';
     LAYOUT.forEach(function (it) { if (it.zone === 'side') side += widgetCell(it, 'side'); else main += widgetCell(it, 'main'); });
@@ -782,11 +781,13 @@
       '<div class="dash"><div class="dz dz--main" data-zone="main" role="group" aria-label="Main panels">' + main + '</div>' +
       '<div class="dz dz--side" data-zone="side" role="group" aria-label="Right column">' + side + '</div></div>';
     board.scrollTop = keepScroll;
+    KIT.notes.reveal(board);
     renderSide();
     if (keepSel) {
       var cell = $('#homePages [data-cell="' + keepSel + '"]');
       var target = cell && (keepCls ? cell.querySelector('.' + keepCls.split(' ')[0]) : null);
       if (target) target.focus({ preventScroll: true });
+      if (target && keepCaret != null && target.setSelectionRange) target.setSelectionRange(keepCaret, keepCaret);
     }
   }
 
@@ -1063,6 +1064,7 @@
     var a = app(id);
     if (!a.shortcuts) return [['Open ' + a.name, function () { openApp(id); }]];
     return a.shortcuts.map(function (sc) {
+      if (sc.compose) return [sc.label, function () { openNoteComposer(); }];
       return [sc.label, function () {
         openApp(id, sc.open || {});
         if (sc.toast) toast(sc.toast);
@@ -1656,10 +1658,119 @@
     clearInterval(rotTimer);
     if (S.smartRotate && !reduceMotion) rotTimer = setInterval(function () {
       var ae = document.activeElement;
-      if (S.app || S.overlay || S.editing || S.drawer || pd || dg || (ae && ae.closest && ae.closest('.wg--stack'))) return;
+      if (S.app || S.overlay || S.editing || S.drawer || pd || dg || (ae && ae.closest && ae.closest('.wg--stack, .wg--notes'))) return;
       stacks().forEach(function (st) { st.idx = (st.idx + 1) % st.items.length; });
       renderHome();
     }, 9000);
+  }
+
+  /* ================= NOTES: quick capture + composer =================
+     Every Notes widget on the dashboard shares one draft (S.noteDraft) and one save status (NOTE_ST).
+     Saved notes join NOTES (after the sample notes) and persist under antz-notes-v1. */
+  var NOTE_ST = { status: 'idle', message: '', lastIndex: null, timer: null };
+  S.noteDraft = { text: '', type: KIT.notes.TYPES[0], animal: '' };
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function noteWhen(n) {
+    if (!n.ts) return n.d;
+    var d = new Date(n.ts), hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return d.toDateString() === new Date().toDateString() ? 'Today ' + hm : n.d;
+  }
+  function animalLabel(id) { var a = ANIMALS.filter(function (x) { return x.id === id; })[0]; return a ? a.n + ' · ' + a.id : ''; }
+  function notesModel(it) {
+    var live = !!(it && it.id), today = new Date().toDateString();
+    var list = NOTES.slice().sort(function (a, b) { return (b.ts || b.n) - (a.ts || a.n); });
+    return { id: live ? it.id : 'preview', interactive: live, draft: live ? S.noteDraft : { text: '', type: KIT.notes.TYPES[0], animal: '' },
+      status: live ? NOTE_ST.status : 'idle', message: NOTE_ST.message, pinned: isPinned('notes'),
+      notes: list.map(function (n) { return { t: n.t, type: n.type, animal: animalLabel(n.animal), by: n.by, when: noteWhen(n), photo: n.photo ? (imgSrc(n.photoKey || '') || true) : false }; }),
+      today: NOTES.filter(function (n) { return n.ts && new Date(n.ts).toDateString() === today; }).length,
+      animals: ANIMALS.map(function (a) { return [a.id, a.n + ' · ' + a.id]; }) };
+  }
+  function persistNotes() { store(NOTES_KEY, NOTES.filter(function (n) { return n.mine; })); }
+  function addNote(o) {
+    var ts = Date.now(), d = new Date(ts);
+    var note = { t: o.t, text: o.body || '', tags: [o.type], by: CFG.user.full, d: String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()], n: ts, ts: ts,
+      coll: QUICK_COLL, type: o.type, animal: o.animal || '', site: o.site || S.site, photo: !!o.photo, photoName: o.photo || '', mine: true };
+    NOTES.push(note);
+    var i = NOTES.length - 1;
+    reg('nt:' + i, { type: 'Note', t: note.t, sub: note.coll + ' · ' + note.d, go: { app: 'notes' } });
+    persistNotes(); NOTE_ST.lastIndex = i;
+    return i;
+  }
+  /* Undo the last save: the note leaves the list and its text goes back into the quick-capture field */
+  function undoNote() {
+    var i = NOTE_ST.lastIndex; if (i == null || i !== NOTES.length - 1) return;
+    var n = NOTES.pop(); delete SAVE['nt:' + i]; persistNotes();
+    NOTE_ST.lastIndex = null; NOTE_ST.status = 'idle';
+    S.noteDraft = { text: n.t, type: n.type, animal: n.animal || '' };
+    refreshNotes(); toast('Note removed. Its text is back in the field.');
+  }
+  /* redraw only the Notes widgets, keeping focus (and the caret) where it was */
+  function refreshNotes(focusSel, cellId) {
+    var ae = document.activeElement, inCell = ae && ae.closest && ae.closest('#homePages .wg--notes');
+    var caret = inCell && ae.matches('.nw__in') ? ae.selectionStart : null;
+    if (!focusSel && inCell) { cellId = inCell.dataset.cell.slice(2); focusSel = ae.matches('.nw__in') ? '.nw__in' : ae.matches('.nw__sel') ? '.nw__sel' : ae.dataset.act ? '[data-act="' + ae.dataset.act + '"]' + (ae.dataset.type ? '[data-type="' + ae.dataset.type + '"]' : '') : null; }
+    $$('#homePages .wg--notes').forEach(function (c) { var f = findItem(c.dataset.cell.slice(2)); if (f) c.outerHTML = widgetCell(f.it, ctxOf(f.it)); });
+    KIT.notes.reveal($('#homePages'));
+    if (S.app === 'notes') renderNotesScreen();
+    if (focusSel) {
+      var el = $('#homePages ' + (cellId ? '[data-cell="w:' + cellId + '"] ' : '') + focusSel);
+      if (el && !el.disabled) { el.focus({ preventScroll: true }); if (caret != null && el.setSelectionRange) el.setSelectionRange(caret, caret); }
+      else if (cellId) { var fi = $('#homePages [data-cell="w:' + cellId + '"] .nw__in'); if (fi) fi.focus({ preventScroll: true }); }
+    }
+  }
+  function noteCell(el) { var c = el && el.closest && el.closest('[data-cell]'); return c ? c.dataset.cell.slice(2) : null; }
+  function setNoteStatus(st, msg) { clearTimeout(NOTE_ST.timer); NOTE_ST.status = st; NOTE_ST.message = msg || ''; }
+  function quickSave(cellId) {
+    var text = S.noteDraft.text.trim();
+    if (NOTE_ST.status === 'saving') return;
+    if (!text) { setNoteStatus('error', 'Write something first, then save.'); refreshNotes('.nw__in', cellId); return; }
+    setNoteStatus('saving'); refreshNotes('.nw__in', cellId);
+    setTimeout(function () {
+      if (navigator.onLine === false) { setNoteStatus('failed', 'Couldn’t save. You’re offline.'); refreshNotes('[data-act="nwRetry"]', cellId); return; }
+      addNote({ t: text, type: S.noteDraft.type, animal: S.noteDraft.animal });
+      S.noteDraft = { text: '', type: S.noteDraft.type, animal: '' };
+      setNoteStatus('saved'); refreshNotes('.nw__in', cellId);
+      toast('Note saved', 'Undo', undoNote);
+      NOTE_ST.timer = setTimeout(function () { if (NOTE_ST.status === 'saved') { NOTE_ST.status = 'idle'; refreshNotes(); } }, 5000);
+    }, reduceMotion ? 120 : 350);
+  }
+  /* the full composer: a sheet with title, note, type, animal, site and a photo */
+  function openNoteComposer(pre) {
+    pre = pre || {};
+    if (S.drawer) closeDrawer(true);
+    setOpener(); closeOverlay(true); S.overlay = 'note';
+    var type = pre.type || S.noteDraft.type, animal = pre.animal != null ? pre.animal : S.noteDraft.animal;
+    var opt = function (v, l, on) { return '<option value="' + esc(v) + '"' + (on ? ' selected' : '') + '>' + esc(l) + '</option>'; };
+    root.innerHTML = '<div class="sheet-wrap" data-act="closeOverlayBg"><form class="sheet note-sheet" id="noteForm" role="dialog" aria-modal="true" aria-labelledby="ncH" novalidate><div class="sheet__grip" aria-hidden="true"></div>' +
+      '<div class="sheet__hd"><h2 id="ncH">New note</h2><button type="button" class="icon-btn" data-act="closeOverlay" aria-label="Close">' + icon('close', 'ico') + '</button></div>' +
+      '<label class="fld" for="ncT"><span>Title</span><input id="ncT" maxlength="120" autocomplete="off" value="' + esc(pre.title || '') + '" aria-describedby="ncSt"></label>' +
+      '<label class="fld" for="ncB"><span>Note</span><textarea id="ncB" rows="5" maxlength="2000">' + esc(pre.body || '') + '</textarea></label>' +
+      '<fieldset class="fld"><legend>Type</legend><div class="nc-types">' + KIT.notes.TYPES.map(function (t) { return '<label class="chip chip-radio"><input type="radio" class="vh-input" name="ncType" value="' + t + '"' + (t === type ? ' checked' : '') + '>' + t + '</label>'; }).join('') + '</div></fieldset>' +
+      '<div class="fld-row"><label class="fld" for="ncA"><span>Animal</span><select id="ncA">' + opt('', 'None', !animal) + ANIMALS.map(function (a) { return opt(a.id, a.n + ' · ' + a.id, a.id === animal); }).join('') + '</select></label>' +
+      '<label class="fld" for="ncS"><span>Site</span><select id="ncS">' + opt('all', 'All sites', S.site === 'all') + (DATA ? DATA.sites.map(function (x) { return opt(x.id, x.name, x.id === S.site); }).join('') : '') + '</select></label></div>' +
+      '<div class="nc-photo"><label class="btn btn--ghost btn--sm" for="ncP">' + icon('photo_camera', 'ico ico--sm') + 'Attach a photo</label><input type="file" id="ncP" class="vh-input" accept="image/*"><span id="ncPN" class="muted"></span></div>' +
+      '<p class="nw__status" id="ncSt" role="status" aria-live="polite"></p>' +
+      '<div class="nc-acts"><button type="button" class="btn btn--ghost" data-act="closeOverlay">Cancel</button><button type="submit" class="btn btn--primary" id="ncSave">Save note</button></div></form></div>';
+    $('#ncP').addEventListener('change', function (e) { var f = e.target.files && e.target.files[0]; $('#ncPN').textContent = f ? f.name : ''; });
+    ($(pre.photo ? '#ncP' : pre.title ? '#ncB' : '#ncT')).focus();
+    syncInert(); updateTitle();
+  }
+  function composerSave() {
+    var t = $('#ncT').value.trim(), b = $('#ncB').value.trim(), st = $('#ncSt'), btn = $('#ncSave');
+    if (btn.disabled) return;
+    if (!t && !b) { st.className = 'nw__status is-error'; st.textContent = 'Add a title or a note before saving.'; $('#ncT').setAttribute('aria-invalid', 'true'); $('#ncT').focus(); return; }
+    $('#ncT').removeAttribute('aria-invalid');
+    btn.disabled = true; btn.textContent = 'Saving…'; st.className = 'nw__status'; st.textContent = 'Saving…';
+    setTimeout(function () {
+      if (!$('#noteForm')) return;
+      if (navigator.onLine === false) { btn.disabled = false; btn.textContent = 'Retry'; st.className = 'nw__status is-error'; st.textContent = 'Couldn’t save. You’re offline. Your note is still here.'; btn.focus(); return; }
+      var f = $('#ncP').files && $('#ncP').files[0], typ = ($('#noteForm input[name="ncType"]:checked') || {}).value || KIT.notes.TYPES[0];
+      addNote({ t: t || b.split('\n')[0].slice(0, 80), body: b, type: typ, animal: $('#ncA').value, site: $('#ncS').value, photo: f ? f.name : '' });
+      if (S.noteDraft.text && (b === S.noteDraft.text.trim() || t === S.noteDraft.text.trim())) S.noteDraft.text = '';
+      closeOverlay(); setNoteStatus('saved'); refreshNotes();
+      toast('Note saved', 'Undo', undoNote);
+      NOTE_ST.timer = setTimeout(function () { if (NOTE_ST.status === 'saved') { NOTE_ST.status = 'idle'; refreshNotes(); } }, 5000);
+    }, reduceMotion ? 120 : 350);
   }
 
   /* ================= EVENTS ================= */
@@ -1678,6 +1789,14 @@
     edit: function () { setEditing(true); },
     done: function () { setEditing(false); },
     gallery: function () { openGallery(); },
+    nwNew: function () { openNoteComposer({ body: S.noteDraft.text, type: S.noteDraft.type, animal: S.noteDraft.animal }); },
+    nwType: function (el) { S.noteDraft.type = el.dataset.type; refreshNotes('[data-act="nwType"][data-type="' + el.dataset.type + '"]', noteCell(el)); },
+    nwSave: function (el) { quickSave(noteCell(el)); },
+    nwRetry: function (el) { quickSave(noteCell(el)); },
+    nwUndo: function () { undoNote(); },
+    nwTemplate: function (el) { var t = KIT.notes.TEMPLATES.filter(function (x) { return x.key === el.dataset.tpl; })[0]; if (t) openNoteComposer({ title: t.title, body: t.body, type: t.type }); },
+    nwPhoto: function () { openNoteComposer({ body: S.noteDraft.text, photo: true }); },
+    nwVoice: function () { toast('Voice notes aren’t available in this preview. Type the note or use a template.'); },
     attTab: function (el) {
       var f = findItem(el.dataset.w); if (!f) return;
       f.it.tab = el.dataset.tab; saveLayout(); renderHome();
@@ -1826,7 +1945,7 @@
   var dg = null, pend = null, press = null;
   var DRAG_THRESHOLD = 6;
   function dragCandidate(t) {
-    if (!t || !t.closest || t.closest('.rs, .rm, .more, .stack-dots, select')) return null;
+    if (!t || !t.closest || t.closest('.rs, .rm, .more, .stack-dots, select, input, textarea')) return null;
     return t.closest('#homePages [data-cell]');
   }
   function beginDrag(cell, e) {
@@ -2036,7 +2155,7 @@
       if (e.shiftKey && document.activeElement === df[0]) { e.preventDefault(); df[df.length - 1].focus(); }
       else if (!e.shiftKey && document.activeElement === df[df.length - 1]) { e.preventDefault(); df[0].focus(); }
     }
-    var mc = e.altKey && e.target.closest && e.target.closest('#homePages [data-cell]');
+    var mc = e.altKey && e.target.closest && !e.target.closest('input, select, textarea') && e.target.closest('#homePages [data-cell]');
     if (mc && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(e.key) > -1) {
       e.preventDefault(); moveItem(mc.dataset.cell, (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? -1 : 1); return;
     }
@@ -2087,6 +2206,15 @@
     if (!typing && !S.overlay && !S.drawer && !e.altKey && !e.metaKey && ((e.ctrlKey && e.key === '\\') || (!e.ctrlKey && e.key === '['))) { if (bp() !== 'phone') { e.preventDefault(); toggleSide(); } }
   });
   $('#noteQ').addEventListener('input', function (e) { S.noteQ = e.target.value; renderNotesScreen(); });
+  /* Notes quick capture: the field and the animal chip update the shared draft; Enter saves */
+  document.addEventListener('input', function (e) {
+    if (!e.target.matches || !e.target.matches('#homePages .nw__in')) return;
+    S.noteDraft.text = e.target.value;
+    $$('#homePages .nw__in').forEach(function (x) { if (x !== e.target) x.value = e.target.value; });
+    if (NOTE_ST.status === 'error' && e.target.value.trim()) { NOTE_ST.status = 'idle'; e.target.removeAttribute('aria-invalid'); var stl = $('#nw-st-' + noteCell(e.target)); if (stl) { stl.className = 'nw__status'; stl.innerHTML = '<span></span>'; } }
+  });
+  document.addEventListener('change', function (e) { if (e.target.matches && e.target.matches('#homePages .nw__sel')) S.noteDraft.animal = e.target.value; });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.matches && e.target.matches('#homePages .nw__in')) { e.preventDefault(); quickSave(noteCell(e.target)); } });
   $('#noteSort').addEventListener('change', function (e) { S.noteSort = e.target.value; renderNotesScreen(); });
   $('#spQ').addEventListener('input', function (e) { S.spQ = e.target.value; renderSpeciesGrid(); });
   $('#spSort').addEventListener('change', function (e) { S.spSort = e.target.value; renderSpeciesGrid(); });
@@ -2095,6 +2223,7 @@
   document.addEventListener('submit', function (e) {
     e.preventDefault();
     if (e.target.id === 'ticketForm') { toast('Ticket HD-1043 raised. We reply within one working day.'); e.target.reset(); closeTicket(); }
+    if (e.target.id === 'noteForm') { composerSave(); return; }
     if (e.target.id === 'composer') { var inp = $('#composeIn'); if (inp.value.trim()) { toast('Message sent'); inp.value = ''; } }
   });
   window.addEventListener('resize', function () {

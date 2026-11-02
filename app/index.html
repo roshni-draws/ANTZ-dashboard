@@ -118,7 +118,7 @@
       <section class="screen has-fab" data-screen="notes" aria-label="Notes and collections" hidden>
         <div class="app-toolbar">
           <p>Observation notes from every section, grouped into collections.</p>
-          <div class="app-toolbar__acts"><button type="button" class="btn btn--primary" data-act="toast" data-msg="New note · opens the note editor"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">add</span>New note</button></div>
+          <div class="app-toolbar__acts"><button type="button" class="btn btn--primary" data-act="nwNew"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">add</span>New note</button></div>
         </div>
         <div class="two-col">
           <div class="side-list" id="noteCollsBox">
@@ -136,7 +136,7 @@
             <ul class="cards" id="noteGrid"></ul>
           </div>
         </div>
-        <button type="button" class="btn btn--primary fab" data-act="toast" data-msg="New note · opens the note editor"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">add</span>New note</button>
+        <button type="button" class="btn btn--primary fab" data-act="nwNew"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">add</span>New note</button>
       </section>
 
       <!-- COLLECTIONS → SPECIES → ANIMAL -->
@@ -384,6 +384,7 @@
 </div>
 
 </div>
+<script src="widget-kit.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

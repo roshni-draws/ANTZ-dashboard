@@ -228,6 +228,45 @@ with nothing saved, desktop starts expanded and tablet collapsed. Phones keep th
 
 Back navigation inside an app is set in `updateAppHeader()` in `app.js`.
 
+### Widget states page (widgets.html)
+`widgets.html` is a separate page that draws every widget in every size and state, using the
+same renderers as the app, so the two never drift. Open it next to `index.html` (file:// or
+`/app/widgets.html`). The header switches Light / Dark and the site; the left list jumps to a
+widget or a state. Each specimen is labelled with the state, the size (columns × rows of the
+dashboard main area) and when that state happens. Notes is done; the other widgets are listed as
+"coming next".
+
+| File | What's in it |
+|---|---|
+| `widget-kit.js` | Shared by both pages: the widget cell frame (⋯, remove, resize), grid spans per size, and the Notes renderer |
+| `catalogue.js` | The catalogue: each widget's sizes and states, and the page controls |
+| `catalogue.css` | Catalogue page chrome only; widgets use `styles.css` |
+
+**Add a widget's states**
+1. Move (or write) its renderer into `widget-kit.js` as `ANTZ_KIT.<name>.render(size, model)`.
+   The renderer reads only the model it is given, so every state is data, not hand-made markup.
+   Point `WIDGETS.<name>` in `app.js` at it and build the model from live data there.
+2. In `catalogue.js`, add an entry to `WIDGETS` with `sizes`, an `intro` and `states`. Each state
+   has a `name`, a one-line `note` (when it happens), `sizes`, and `model(m, size)` to change the
+   sample data or status. Flags: `editing` (edit mode chrome), `rm` (force reduced motion),
+   `iframe: 'dark'` (draw it in the dark theme beside the light ones).
+3. Remove its `soon: true` placeholder.
+
+### Notes widget (quick capture)
+Notes is a shortcut for writing notes, in every size:
+- **Small:** one big New note button and today's count; it opens the composer.
+- **Medium / Wide:** a "Write a note…" field with Save (Enter saves), type chips (Observation,
+  Medical, Behaviour, Feeding, General), an animal chip, and the latest note.
+- **Large:** the same, plus the latest three notes and View all.
+- **Extra large** (desktop): adds templates (Daily observation, Incident, Feeding check) and photo
+  and voice buttons (voice is UI only in this preview).
+- The expand button (or New note) opens the full composer: title, note, type, animal, site, photo.
+
+Saving shows "Saving…", then "Saved" with Undo (also in the toast). Undo removes the note and
+puts its text back in the field. With no connection the save fails, the text stays and Retry is
+offered. Status is announced (`aria-live`). Notes you write are kept in `antz-notes-v1` and appear
+in the Notes app under "Quick notes".
+
 ### Importance colours
 Dashboard cards are coloured by how urgent they are, always with a word as well as the colour
 ("146 overdue", "High priority", "Above threshold", "· overdue" under each Today task, or visually
