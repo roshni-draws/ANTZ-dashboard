@@ -2,3 +2,7 @@
 node_modules/
 *.log
 .claude/settings.local.json
+
+# separate repositories cloned for reference (kept locally, each has its own git history)
+clone/
+awesome-design-systems/
