@@ -6,3 +6,6 @@
 /app/*
 !/app/index.html
 !/app/config.js
+!/app/data.js
+!/app/widget-lib.js
+!/app/widget-lib.css

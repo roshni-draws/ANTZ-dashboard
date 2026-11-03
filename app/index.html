@@ -14,11 +14,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Antz Home · Style 6</title>
+<script>/* page-load animation: cards show a shimmer until the page is ready, then rise in (see reveal() below) */
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { document.documentElement.classList.add('preload'); setTimeout(function () { document.documentElement.classList.remove('preload'); }, 4000); }</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,300..500,0..1,0&display=block" rel="stylesheet">
 <script src="config.js?v=20261102i"></script>
+<script src="data.js?v=20261103c"></script>
+<script src="widget-lib.js?v=20261103e"></script>
 <style>
 :root {
   --bg: #E9EEEC; --canvas: #F4F6F5; --paper: #FFFFFF;
@@ -1323,7 +1327,7 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
 .asb__item:hover { background: var(--canvas); color: var(--ink); }
 .asb__item[aria-current="page"] { background: var(--lime-soft); color: var(--lime-ink); font-weight: 600; }
 .asb__lbl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.asb__n { font: 400 12px ui-monospace, Menlo, monospace; color: var(--mute); }
+.asb__n { font: 400 12px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--mute); }
 .asb__label { display: flex; justify-content: space-between; padding: 22px 12px 8px; font-size: 12px; color: var(--mute); }
 .asb__mic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--c) 16%, #fff); color: color-mix(in srgb, var(--c) 72%, #000); }
 .asb__mic .asb__ico { font-size: 14px; width: 14px; font-variation-settings: 'wght' 400, 'FILL' 1; }
@@ -1331,6 +1335,41 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
 .asb__item:hover .asb__off, .asb__off:focus-visible { opacity: 1; }
 .asb__off:hover { background: #fff; color: var(--ink); }
 .asb__add { color: var(--lime-ink); }
+.asb__bd { flex: none; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; font: 600 11px/1 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; transition: opacity .15s; }
+.asb__bd--red { background: var(--coral); color: #fff; }
+.asb__bd--green { background: var(--lime-soft); color: var(--lime-ink); }
+.asb__item:hover .asb__bd, .asb__item:focus-within .asb__bd { opacity: 0; }
+.asb-rail .asb__bd { position: absolute; top: 1px; right: calc(50% - 22px); min-width: 16px; height: 16px; padding: 0 4px; font-size: 9.5px; box-shadow: 0 0 0 2px #fff; }
+.asb-rail .asb__item:hover .asb__bd { opacity: 1; }
+#sbPins .asb__item[data-pin] { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+#sbPins.is-sorting, #sbPins.is-sorting .asb__item { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+#sbPins .asb__item.is-drag { z-index: 2; background: #fff; color: var(--ink); box-shadow: 0 10px 24px -12px rgba(0, 40, 20, .45), inset 0 0 0 1.5px var(--lime-ink); }
+#sbPins.is-sorting .asb__off { display: none; }
+.pinpk { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; background: rgba(20, 30, 24, .32); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.pinpk.on { opacity: 1; pointer-events: auto; }
+.pinpk__p { width: min(440px, 100%); max-height: min(680px, 100%); display: flex; flex-direction: column; border-radius: 22px; background: #fff; box-shadow: 0 30px 60px -20px rgba(0, 40, 20, .45); overflow: hidden; }
+.pinpk__hd { display: flex; align-items: center; gap: 12px; padding: 18px 20px 10px; }
+.pinpk__hd > div { margin-right: auto; }
+.pinpk__hd b { display: block; font-size: 17px; font-weight: 600; }
+.pinpk__hd small { display: block; font-size: 12.5px; color: var(--mute); }
+.pinpk__x { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--canvas); color: var(--ink-2); }
+.pinpk__q { display: flex; align-items: center; gap: 8px; height: 40px; margin: 0 20px 8px; padding: 0 14px; border-radius: 999px; background: var(--canvas); color: var(--mute); }
+.pinpk__q input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; color: var(--ink); }
+.pinpk__list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 8px; }
+.pinpk__g { padding: 14px 8px 6px; font-size: 12px; color: var(--mute); }
+.pinpk__row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border-radius: 12px; text-align: left; transition: background .15s; }
+.pinpk__row:hover { background: var(--canvas); }
+.pinpk__row[aria-disabled='true'] { opacity: .45; cursor: not-allowed; }
+.pinpk__t { flex: 1; min-width: 0; }
+.pinpk__t b { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.pinpk__t small { display: block; font-size: 12px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pinpk__sw { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--lime-ink); box-shadow: inset 0 0 0 1px var(--line); }
+.pinpk__sw .asb__ico { font-size: 16px; }
+.pinpk__row[aria-checked='true'] .pinpk__sw { background: var(--lime-ink); color: #fff; box-shadow: none; }
+.pinpk__none { padding: 32px 0; text-align: center; color: var(--mute); }
+.pinpk__ft { display: flex; justify-content: flex-end; padding: 12px 20px 16px; border-top: 1px solid var(--line-2); }
+.pinpk__done { height: 40px; padding: 0 20px; border-radius: 999px; background: var(--lime-ink); color: #fff; font-weight: 600; }
+@media (max-width: 640px) { .pinpk { padding: 0; align-items: end; } .pinpk__p { width: 100%; border-radius: 22px 22px 0 0; } }
 .asb__add .asb__mic { background: none; box-shadow: inset 0 0 0 1px var(--line); color: var(--lime-ink); }
 .asb__foot { margin-top: auto; }
 /* rail */
@@ -1343,6 +1382,300 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
 .asb-rail .asb__label::before { content: ""; display: block; width: 100%; height: 1px; background: var(--line); }
 @media (max-width: 1280px) { .app { grid-template-columns: 248px minmax(0, 1fr) 340px; } .asb-rail .app { grid-template-columns: 76px minmax(0, 1fr) 340px; } }
 @media (max-width: 1060px) { .asb { display: none; } .app, .asb-rail .app { grid-template-columns: minmax(0, 1fr); } .hbar { grid-column: 1 / -1; } }
+</style>
+<style>
+/* ── module widgets on the board (widget-lib.js): small is 1:1, large is twice as wide and as tall as its content ── */
+.cboard { display: block; position: relative; }
+.cboard > .cw { position: absolute; margin: 0; }
+.cw__detail { display: none; }
+.cw.is-detail { padding: 0; background: none !important; box-shadow: none; }
+.cw.is-detail > :not(.cw__detail):not(.cdel):not(.xsz) { display: none !important; }
+.cw.is-detail > .cw__detail { display: block; position: absolute; inset: 0; z-index: 1; }
+.cboard > .cw.xw { display: block; padding: 0; background: none; box-shadow: none; overflow: visible; border-radius: 20px; }
+.cboard > .cw.xw--s { grid-column: span 3; grid-row: span 3; }
+.cboard > .cw.xw--l { grid-column: span 6; grid-row: span 6; }
+.xsz { display: none; }
+body.editing .xsz { display: inline-flex; align-items: center; gap: 6px; position: absolute; top: 8px; left: 8px; z-index: 3; height: 28px; padding: 0 10px 0 8px; border-radius: 999px; background: #fff; color: var(--lime-ink); font-size: 12px; font-weight: 600; box-shadow: 0 0 0 2px var(--lime-ink); }
+.xsz svg.s { width: 14px; height: 14px; stroke-width: 2.2; }
+@media (max-width: 640px) { .cboard > .cw.xw--s { grid-column: span 1; } .cboard > .cw.xw--l { grid-column: span 2; } }
+
+/* ── add-widget console: browse every module's widget, then pick a size ── */
+.wcon { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 24px; background: rgba(20, 30, 24, .32); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.wcon.on { opacity: 1; pointer-events: auto; }
+.wcon__p { width: min(1120px, 100%); height: min(840px, 100%); display: flex; flex-direction: column; border-radius: 26px; background: var(--canvas); box-shadow: 0 30px 60px -20px rgba(0, 40, 20, .45); overflow: hidden; transform: translateY(12px); transition: transform .3s var(--ease); }
+.wcon.on .wcon__p { transform: none; }
+.wcon__hd { display: flex; align-items: center; gap: 12px; padding: 18px 20px 14px; background: #fff; }
+.wcon__back { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--canvas); color: var(--ink); }
+.wcon__back[hidden], .wcon__q[hidden], .wcon__chips[hidden], .wcon__ft[hidden] { display: none; }
+.wcon__ttl { margin-right: auto; min-width: 0; }
+.wcon__ttl b { display: block; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.wcon__ttl small { display: block; font-size: 13px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcon__q { display: flex; align-items: center; gap: 8px; height: 40px; width: 260px; padding: 0 14px; border-radius: 999px; background: var(--canvas); color: var(--mute); }
+.wcon__q input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; color: var(--ink); }
+.wcon__chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 14px; background: #fff; border-bottom: 1px solid var(--line-2); }
+.wcon__chips button { height: 32px; padding: 0 12px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.wcon__chips button span { margin-left: 6px; font-size: 12px; color: var(--mute); }
+.wcon__chips button[aria-pressed='true'] { background: var(--lime-ink); color: #fff; box-shadow: none; }
+.wcon__chips button[aria-pressed='true'] span { color: rgba(255, 255, 255, .75); }
+.wcon__body { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 20px 24px; }
+.wcon__grp { display: flex; align-items: baseline; gap: 8px; margin: 20px 4px 8px; }
+.wcon__grp h3 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+.wcon__grp span { font-size: 12.5px; color: var(--mute); }
+.wcon__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 8px; }
+.wtile { position: relative; border-radius: 24px; transition: background .15s, box-shadow .15s; }
+.wtile:hover, .wtile:focus-within { background: #fff; }
+.wtile.is-sel { background: #fff; box-shadow: inset 0 0 0 2px var(--lime-ink); }
+.wtile__open { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 8px 8px 12px; border-radius: 24px; text-align: left; }
+.wtile__ck { position: absolute; top: 2px; right: 2px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--lime-ink); box-shadow: 0 0 0 1.5px var(--line), 0 4px 10px -4px rgba(0, 40, 20, .3); opacity: 0; transition: opacity .15s, background .15s; }
+.wtile:hover .wtile__ck, .wtile:focus-within .wtile__ck, .wtile.is-sel .wtile__ck { opacity: 1; }
+.wtile.is-sel .wtile__ck { background: var(--lime-ink); color: #fff; box-shadow: 0 0 0 2px #fff; }
+.wtile__ck svg.s { width: 16px; height: 16px; stroke-width: 2.4; }
+@media (hover: none) { .wtile__ck { opacity: 1; } }
+.wtile__pv { display: block; aspect-ratio: 1; margin-bottom: 6px; pointer-events: none; }
+.wtile b { padding: 0 6px; font-size: 13.5px; font-weight: 600; }
+.wtile small { display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 12px; color: var(--mute); min-width: 0; }
+.wtile small span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wtile small i { flex: none; font-style: normal; padding: 1px 7px; border-radius: 999px; background: var(--lime-soft); color: var(--lime-ink); font-weight: 600; font-size: 11px; }
+.wcon__shelf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding: 12px 14px; border-radius: 18px; background: #fff; font-size: 13px; color: var(--ink-2); }
+.wcon__shelf button { height: 30px; padding: 0 12px; border-radius: 999px; background: var(--lime-soft); color: var(--lime-ink); font-size: 12.5px; font-weight: 600; }
+.wcon__none { padding: 48px 0; text-align: center; color: var(--mute); }
+.wdet { display: grid; grid-template-columns: 300px minmax(0, 560px); gap: 20px; justify-content: center; align-items: start; padding-top: 20px; }
+.wopt { display: flex; flex-direction: column; gap: 14px; padding: 14px; border-radius: 26px; background: #fff; text-align: left; box-shadow: inset 0 0 0 1.5px var(--line); transition: box-shadow .15s; }
+.wopt:hover { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--lime-ink) 45%, var(--line)); }
+.wopt[aria-checked='true'] { box-shadow: inset 0 0 0 2.5px var(--lime-ink); }
+.wopt__lbl { display: flex; align-items: center; gap: 10px; padding: 2px 4px 0; }
+.wopt__lbl b { display: block; font-size: 15px; font-weight: 600; }
+.wopt__lbl small { display: block; font-size: 12.5px; color: var(--mute); }
+.wopt__dot { width: 20px; height: 20px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line); display: grid; place-items: center; }
+.wopt[aria-checked='true'] .wopt__dot { background: var(--lime-ink); box-shadow: none; }
+.wopt[aria-checked='true'] .wopt__dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.wopt__pv { display: block; pointer-events: none; }
+.wopt__pv--s { aspect-ratio: 1; }
+.wdet--one { grid-template-columns: minmax(0, 860px); }
+.wpv-fh { position: relative; overflow: hidden; border-radius: 18px; }
+.wtile__pv.wpv-fh { display: flex; align-items: center; }
+.wpv-fh .wfh { position: relative; flex: none; transform-origin: 0 0; pointer-events: none; }
+.wtile__pv.wpv-fh .wfh { transform-origin: 0 50%; }
+.wcon__ft { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: #fff; border-top: 1px solid var(--line-2); }
+.wcon__pick { margin-right: auto; font-size: 13px; color: var(--ink-2); }
+.wcon__tray { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.wsel { display: inline-flex; align-items: center; gap: 4px; flex: none; height: 34px; padding: 0 4px 0 12px; border-radius: 999px; background: var(--canvas); font-size: 12.5px; }
+.wsel b { font-weight: 600; white-space: nowrap; }
+.wsel__sz { min-width: 26px; height: 26px; border-radius: 999px; background: #fff; color: var(--lime-ink); font-weight: 700; font-size: 11.5px; box-shadow: inset 0 0 0 1px var(--line); }
+.wsel__x { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--mute); }
+.wsel__x:hover { background: #fff; color: var(--ink); }
+.wsel__x svg.s { width: 14px; height: 14px; }
+.wcon__ghost { flex: none; height: 40px; padding: 0 16px; border-radius: 999px; background: #fff; color: var(--ink); font-weight: 600; font-size: 13.5px; box-shadow: inset 0 0 0 1px var(--line); }
+.wcon__ghost:hover { background: var(--canvas); }
+.wcon__solid { flex: none; height: 40px; padding: 0 16px; border-radius: 999px; background: var(--lime-ink); color: #fff; font-weight: 600; font-size: 13.5px; }
+.wcon__add { flex: none; }
+.wcon__view { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin-top: 16px; padding: 12px 14px; border-radius: 18px; background: #fff; }
+.wcon__viewic { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--lime-soft); color: var(--lime-ink); }
+.wcon__viewic svg.s { width: 20px; height: 20px; }
+.wcon__viewt { flex: 1; min-width: 200px; }
+.wcon__viewt b { display: block; font-size: 14px; font-weight: 600; }
+.wcon__viewt small { display: block; font-size: 12.5px; color: var(--mute); }
+.wcon__viewq { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.wcon__add { height: 44px; padding: 0 20px; border-radius: 999px; background: var(--lime-ink); color: #fff; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+.wcon__add svg.s { width: 18px; height: 18px; }
+@media (max-width: 900px) { .wdet { grid-template-columns: minmax(0, 1fr); } .wopt--s { max-width: 320px; } }
+@media (max-width: 640px) { .wcon { padding: 0; } .wcon__p { height: 100%; border-radius: 0; } .wcon__hd { flex-wrap: wrap; } .wcon__q { order: 9; width: 100%; } .wcon__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .wcon__body { padding: 4px 12px 20px; } }
+@media (prefers-reduced-motion: reduce) { .wcon__p { transition: none; } }
+/* ── Notes: a "New note" button that expands into the full note form (as in the ANTZ app) ── */
+.nn__ic { font-family: 'Material Symbols Outlined'; font-size: 20px; line-height: 1; width: 20px; display: inline-block; overflow: hidden; flex: none; font-variation-settings: 'wght' 400, 'FILL' 0, 'opsz' 20; user-select: none; }
+.nn__vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.nn__open { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 14px 8px 8px; border-radius: 16px; background: var(--canvas); text-align: left; box-shadow: inset 0 0 0 1px var(--line-2); transition: background .15s, box-shadow .15s; }
+.nn__open:hover { background: #fff; box-shadow: inset 0 0 0 1.5px var(--lime-ink); }
+.nn__badge { width: 38px; height: 38px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--butter); color: #B9770E; }
+.nn__opent { flex: 1; min-width: 0; }
+.nn__opent { font-size: 14px; font-weight: 600; color: var(--lime-ink); }
+.nn__plus { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--lime-ink); color: #fff; font-size: 20px; }
+.nn.is-open .nn__open { display: none; }
+.nn__form { display: flex; flex-direction: column; gap: 12px; animation: nnIn .25s var(--ease) both; }
+.nn__form[hidden] { display: none; }
+@keyframes nnIn { from { opacity: 0; transform: translateY(-6px); } }
+.nn__top { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.nn__top h3 { font-size: 20px; font-weight: 500; letter-spacing: -.02em; }
+.nn__back { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); margin-left: -6px; }
+.nn__back:hover { background: var(--canvas); }
+.nn__field { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 0 14px; border-radius: 12px; background: #F2FBF6; box-shadow: inset 0 0 0 1px #B9D3C5; font: 400 14px Inter, system-ui, sans-serif; color: var(--ink); text-align: left; }
+.nn__field:focus-within, .nn__pickbtn:focus-visible, .nn__ta:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--lime-ink), 0 0 0 4px var(--lime-soft); }
+.nn__val { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nn__ph { color: #2E5C49; }
+.nn__ph em { font-style: normal; color: var(--coral); }
+.nn__add { color: #12A3C2; font-size: 22px; width: 22px; }
+.nn__pickbtn[aria-expanded='true'] .nn__add { transform: rotate(45deg); }
+.nn__ta { display: block; min-height: 52px; padding: 14px; border: 0; resize: vertical; line-height: 1.45; }
+.nn__ta::placeholder { color: #557A69; }
+.nn__date { position: relative; margin-top: 6px; background: #E9F3EE; }
+.nn__lgd { position: absolute; left: 12px; top: -8px; padding: 0 4px; font-size: 11.5px; color: var(--ink-2); background: #fff; border-radius: 4px; }
+.nn__date input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: 500 14px Inter, system-ui, sans-serif; color: var(--lime-ink); }
+.nn__date input::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; right: 8px; width: 32px; height: 32px; cursor: pointer; }
+.nn__date .nn__ic { color: var(--ink-2); pointer-events: none; }
+.nn__hr { border: 0; height: 1px; background: var(--line); margin: 4px 0; }
+.nn__row { justify-content: flex-start; }
+.nn__row > span:nth-child(2) { flex: 1; }
+.nn__sw { position: relative; width: 46px; height: 28px; flex: none; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 2px #7C9A8B; transition: background .15s; }
+.nn__sw i { position: absolute; top: 5px; left: 5px; width: 18px; height: 18px; border-radius: 50%; background: #7C9A8B; transition: transform .2s var(--ease), background .15s; }
+.nn__sw[aria-checked='true'] { background: var(--lime-ink); box-shadow: none; }
+.nn__sw[aria-checked='true'] i { transform: translateX(18px); background: #fff; }
+.nn__pop { margin-top: 6px; padding: 8px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); }
+.nn__pop[hidden] { display: none; }
+.nn__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nn__chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; background: var(--canvas); font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+.nn__chip[aria-checked='true'] { background: var(--lime-ink); color: #fff; }
+.nn__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.nn__seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--canvas); }
+.nn__seg button { flex: 1; height: 28px; border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.nn__seg button[aria-selected='true'] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.nn__q { display: flex; align-items: center; gap: 6px; height: 34px; margin: 8px 0 4px; padding: 0 10px; border-radius: 999px; background: var(--canvas); color: var(--mute); }
+.nn__q .nn__ic { font-size: 17px; width: 17px; }
+.nn__q input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 13px; color: var(--ink); }
+.nn__list { max-height: 180px; overflow-y: auto; }
+.nn__opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px; border-radius: 10px; text-align: left; font-size: 13px; color: var(--ink); }
+.nn__opt:hover { background: var(--canvas); }
+.nn__opt small { margin-left: auto; font-size: 11.5px; color: var(--mute); }
+.nn__opt[aria-checked='true'] { background: var(--lime-soft); color: var(--lime-ink); font-weight: 600; }
+.nn__none { padding: 10px 8px; font-size: 12.5px; color: var(--mute); }
+.nn__help { margin-top: -6px; padding: 0 4px; font-size: 12px; color: var(--ink-2); }
+.nn__lbl { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.nn__lbl .nn__ic { transform: rotate(45deg); font-size: 19px; }
+.nn__up { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 12px; border-radius: 14px; background: #E6F5FA; box-shadow: inset 0 0 0 1px #CFE3EA; text-align: center; cursor: pointer; transition: box-shadow .15s; }
+.nn__up:hover, .nn__up:focus-within, .nn__up.is-over { box-shadow: inset 0 0 0 1.5px #12A3C2; }
+.nn__upic { width: 52px; height: 52px; margin-bottom: 6px; border-radius: 10px; display: grid; place-items: center; border: 1.5px dashed #46655A; color: #46655A; }
+.nn__upic .nn__ic { font-size: 26px; width: 26px; }
+.nn__up b { font-size: 14px; font-weight: 600; color: var(--lime-ink); }
+.nn__up small { font-size: 11.5px; color: var(--mute); }
+.nn__files { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.nn__files:empty { display: none; }
+.nn__files li { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 10px; background: var(--canvas); font-size: 12.5px; }
+.nn__files li span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nn__files li small { color: var(--mute); white-space: nowrap; }
+.nn__files button { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--mute); }
+.nn__files button:hover { background: #fff; color: var(--ink); }
+.nn__files .nn__ic { font-size: 16px; width: 16px; }
+.nn__pri { padding: 12px 12px 14px; border: 0; border-radius: 12px; background: #E9F1EE; box-shadow: inset 0 0 0 1.5px #8EA79B; }
+.nn__pri legend { float: left; width: 100%; margin-bottom: 12px; font-size: 14px; color: #2E5C49; }
+.nn__pris { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; clear: both; }
+.nn__pr { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--ink-2); }
+.nn__pr input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.nn__pr i { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font: 700 14px/1 Inter, system-ui, sans-serif; font-style: normal; letter-spacing: -.04em; color: #2E3D36; box-shadow: inset 0 0 0 1.5px #2E3D36; background: #fff; transition: background .15s, color .15s; }
+.nn__pr i .nn__ic { font-size: 19px; width: 19px; }
+.nn__pr input:checked + i { background: #12C9B4; color: #fff; box-shadow: none; }
+.nn__pr input:checked + i + span { color: var(--ink); font-weight: 600; }
+.nn__pr input:focus-visible + i { outline: 2px solid var(--lime-ink); outline-offset: 2px; }
+.nn__err { font-size: 12.5px; color: #C23A1E; }
+.nn__err:empty { display: none; }
+.nn__ft { display: flex; gap: 8px; }
+.nn__cancel { flex: 1; height: 42px; border-radius: 999px; background: var(--canvas); font-weight: 600; font-size: 13.5px; color: var(--ink-2); }
+.nn__save { flex: 1.4; height: 42px; border-radius: 999px; background: var(--lime-ink); color: #fff; font-weight: 600; font-size: 13.5px; }
+.nn__save:disabled { background: var(--line); color: var(--mute); cursor: default; }
+@media (prefers-reduced-motion: reduce) { .nn__form { animation: none; } }
+/* Today card: the date tile opens a calendar; Due today | Overdue, or Completed | Overdue for a past day */
+.blk--today { position: relative; }
+.dbadge { cursor: pointer; transition: transform .15s var(--ease), box-shadow .15s; }
+.dbadge:hover { box-shadow: inset 0 0 0 1.5px var(--lime-ink); }
+.dbadge[aria-expanded='true'] { box-shadow: inset 0 0 0 2px var(--lime-ink); }
+.ttabs em { font-style: normal; }
+.dcal { position: absolute; z-index: 30; top: 74px; right: 12px; width: 268px; padding: 12px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px var(--line-2), 0 24px 48px -20px rgba(0, 40, 20, .45); }
+.dcal[hidden] { display: none; }
+.dcal__hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.dcal__hd b { font-size: 14px; font-weight: 600; }
+.dcal__hd button { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); }
+.dcal__hd button:hover:not(:disabled) { background: var(--canvas); }
+.dcal__hd button:disabled { opacity: .3; cursor: default; }
+.dcal__hd svg.s { width: 16px; height: 16px; }
+.dcal__wk, .dcal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+.dcal__wk span { font-size: 11px; color: var(--mute); padding: 4px 0; }
+.dcal__grid button { height: 32px; border-radius: 9px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.dcal__grid button:hover:not(:disabled) { background: var(--canvas); }
+.dcal__grid button:disabled { color: #C2CCC7; cursor: default; }
+.dcal__grid button.is-today { box-shadow: inset 0 0 0 1.5px var(--lime-ink); font-weight: 600; color: var(--lime-ink); }
+.dcal__grid button[aria-pressed='true'] { background: var(--lime-ink); color: #fff; font-weight: 600; box-shadow: none; }
+.dcal__ft { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-2); font-size: 11.5px; color: var(--mute); }
+.dcal__ft button { height: 30px; padding: 0 12px; border-radius: 999px; background: var(--lime-soft); color: var(--lime-ink); font-weight: 600; font-size: 12.5px; }
+.tl__card.done { background: #EAF8EF; }
+.tl__card.done em { color: var(--lime-ink); }
+.tl__none { padding: 18px 4px; font-size: 13px; color: var(--mute); text-align: center; }
+/* widget console header: one line of quiet group filters */
+.wcon__hd { padding-bottom: 10px; }
+.wcon__chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 2px; padding: 0 16px 10px; }
+.wcon__chips::-webkit-scrollbar { display: none; }
+.wcon__chips button { flex: none; height: 32px; padding: 0 12px; background: transparent; box-shadow: none; color: var(--ink-2); }
+.wcon__chips button:hover { background: var(--canvas); }
+.wcon__chips button span { margin-left: 5px; font-size: 11.5px; }
+/* ── Quick Actions and profile menu, as on the live Style 6 (antz-home-style-2.vercel.app/style-6) ── */
+/* Quick Actions categories: one line, left-aligned, the count at the end */
+.qm__cat { text-align: left; }
+.qm__catl { flex: 1; min-width: 0; font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 1101px) { .qm__body { grid-template-columns: 262px minmax(0, 1fr) 300px; } }
+.qm__cat svg.s { flex: none; }
+/* one tile style everywhere */
+.qm__mod .qm__tile, .qm__hit .qm__tile { width: 40px; height: 40px; border-radius: 10px; background: var(--c); box-shadow: none; transition: background .15s, color .15s; }
+.qm__side .qm__tile, .qm__sidehd .qm__tile { background: var(--c); box-shadow: none; border-radius: 10px; }
+/* soft grey-green body, soft-white rounded rows; the selected module turns white and joins the screens panel like an open folder tab */
+.qm__panel { border-radius: 22px; }
+.qm__body { background: #E6EDEB; }
+.qm__nav { border-right: 0; }
+.qm__cat { border-radius: 12px; }
+.qm__cat:hover { background: rgba(255, 255, 255, .6); }
+.qm__cat[aria-current='true'] { background: #fff; color: #1F415B; }
+.qm__list { padding-right: 0; }
+.qm__grp { color: #5E6E73; }
+.qm__mod, .qm__hit { width: calc(100% - 18px); margin-right: 18px; border-radius: 16px; background: rgba(255, 255, 255, .6); box-shadow: none; color: var(--ink); transition: background .15s, margin .2s var(--ease), border-radius .2s; }
+.qm__mod:hover, .qm__hit:hover { background: rgba(255, 255, 255, .92); box-shadow: none; }
+.qm__mod[aria-selected='true'] { position: relative; z-index: 1; width: 100%; margin-right: 0; padding-right: 30px; border-radius: 16px 0 0 16px; background: #fff; box-shadow: none; color: var(--ink); }
+.qm__mod[aria-selected='true'] small { color: var(--mute); }
+.qm__mod[aria-selected='true'] .qm__tile { background: var(--c); color: #fff; box-shadow: none; }
+.qm__mod[aria-selected='true']::before, .qm__mod[aria-selected='true']::after { content: ''; position: absolute; right: 0; width: 16px; height: 16px; pointer-events: none; }
+.qm__mod[aria-selected='true']::before { top: -16px; background: radial-gradient(circle at 0 0, transparent 15.5px, #fff 16px); }
+.qm__mod[aria-selected='true']::after { bottom: -16px; background: radial-gradient(circle at 0 100%, transparent 15.5px, #fff 16px); }
+.qm__side { margin: 14px 14px 14px 0; border-left: 0; border-radius: 20px; background: #fff; }
+.qm__scr { border-radius: 12px; }
+.qm__scr:hover { background: #F1F5F3; }
+/* module rows: no arrows */
+.qm__mod > svg.s, .qm__hit > svg.s { display: none; }
+.qm__mod, .qm__hit { grid-template-columns: 40px 1fr; }
+.qm__side .qm__sidehd .qm__tile { display: none; }
+.qm__side .qm__sidehd { gap: 0; }
+/* profile menu: no repeated name or site; Log out left-aligned like the rest */
+.pm .pm__who { display: none; }
+.pm .pm__site { display: none; }
+.pm .pm__item.out { width: 100%; justify-content: flex-start; margin: 0; }
+.pm .pm__item.out > svg.s { margin-left: 0; width: 18px; height: 18px; color: var(--coral); }
+/* widget console: title row, then one filter row with the groups and the search on the right */
+.wcon__bar { display: flex; align-items: center; gap: 12px; padding: 0 16px 10px; background: #fff; border-bottom: 1px solid var(--line-2); }
+.wcon__bar[hidden] { display: none; }
+.wcon__bar .wcon__chips { flex: 1; min-width: 0; padding: 0; border: 0; background: none; }
+.wcon__bar .wcon__q { flex: none; width: 240px; height: 36px; }
+@media (max-width: 640px) { .wcon__bar { flex-direction: column; align-items: stretch; } .wcon__bar .wcon__q { width: 100%; order: -1; } }
+/* one icon tile on every board card and module widget: 40px, 12px corners, a 22px filled Material Symbol in the
+   module's colour on a tint of it; frosted white on the dark and coloured cards */
+.cwi { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 16%, #fff); color: color-mix(in srgb, var(--c) 72%, #000); }
+.cwi__g { font-family: 'Material Symbols Outlined'; font-size: 22px; width: 22px; line-height: 1; overflow: hidden; font-variation-settings: 'wght' 400, 'FILL' 1, 'opsz' 24; user-select: none; }
+.cw--blue .cwi, .cw--teal .cwi, .mw--ink .cwi { background: rgba(255, 255, 255, .18); color: #fff; }
+.cw__hd { gap: 12px; }
+.mw__hd { gap: 12px; }
+.wegg .cwi { margin-bottom: auto; }
+/* ── page-load: shimmer placeholders, then cards spring in one after another ── */
+@keyframes skShimmer { to { background-position: -200% 0; } }
+@keyframes cwIn { from { opacity: 0; transform: translateY(20px) scale(.95); } 70% { transform: translateY(-2px) scale(1.005); } }
+@keyframes numIn { from { opacity: 0; transform: translateY(14px) scale(.9); filter: blur(4px); } }
+.preload { --play: paused; }
+.preload .cboard > .cw::before, .preload .side .blk::before { content: ''; position: absolute; inset: 0; z-index: 9; border-radius: inherit; background: linear-gradient(100deg, #E6EEE9 20%, #F5F9F7 40%, #E6EEE9 60%) 0 0 / 200% 100%; animation: skShimmer 1.1s linear infinite; }
+.preload .cboard > .cw { box-shadow: none !important; }
+.preload .side .blk.rise { animation: none; opacity: 1; transform: none; }
+.preload .cboard .cdel, .preload .cboard .xsz { display: none; }
+.entering .cboard > .cw { animation: cwIn .7s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+.entering .side .blk.rise { animation-delay: calc(var(--i, 0) * 80ms + 120ms); }
+.entering .cboard .cw__big, .entering .cboard .mw__num, .entering .cboard .flow b { animation: numIn .7s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 70ms + 260ms); }
+.entering .cboard .flow span:nth-child(2) b { animation-delay: calc(var(--i, 0) * 70ms + 340ms); }
+.entering .cboard .flow span:nth-child(3) b { animation-delay: calc(var(--i, 0) * 70ms + 420ms); }
+@media (prefers-reduced-motion: reduce) { .preload .cboard > .cw::before, .preload .side .blk::before { display: none; } }
+/* drag any card to swap it with another (no Edit needed) */
+@media (hover: hover) { .cboard > .cw { cursor: grab; } .cboard > .cw :is(button, input, select, [role="tab"], .mw__seg, .seg, .go, .mw__go) { cursor: pointer; } }
+.cboard > .cw.is-lift { transform: scale(1.02); box-shadow: 0 18px 40px -18px rgba(0, 40, 20, .45); transition: transform .2s var(--ease), box-shadow .2s; }
+body.dragging { user-select: none; -webkit-user-select: none; }
 </style>
 </head>
 <body>
@@ -1443,34 +1776,34 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
       <section class="stage" aria-label="Module stats">
         <div class="cboard" id="cboard">
           <a class="cw cw--blue c2 r2" data-wid="animals" href="#" data-toast="Animals">
-            <div class="cw__hd"><div><b>Animals</b><small>Newly added, by site</small></div><span class="go">↗</span></div>
+            <div class="cw__hd"><span class="cwi" style="--c:#37BD69" aria-hidden="true"><span class="cwi__g">cruelty_free</span></span><div><b>Animals</b><small>Newly added, by site</small></div><span class="go">↗</span></div>
             <div class="cw__big num" data-k="new">643</div>
             <div class="sbars sbars--white" id="vbars"></div>
             <div class="cw__foot"><span>9 sites</span><span>Scroll →</span></div>
           </a>
           <a class="cw cw--teal c2" data-wid="approvals" href="#" data-toast="Approvals">
-            <div class="cw__hd"><span class="cw__ic cw__ic--glass"><span class="ico" style="--i:url('https://antz-home-style-2.vercel.app/assets/icon/m-approvals.svg')"></span></span><div><b>Approvals</b><small>Transfers · last 30 days</small></div><span class="go">↗</span></div>
+            <div class="cw__hd"><span class="cwi" style="--c:#305068" aria-hidden="true"><span class="cwi__g">task_alt</span></span><div><b>Approvals</b><small>Transfers · last 30 days</small></div><span class="go">↗</span></div>
             <div class="flow"><span><b class="num" data-ap="0">16</b><small><i style="background:#FFD36B"></i>Pending</small></span><span><b class="num" data-ap="1">42</b><small><i style="background:#52F990"></i>Approved</small></span><span><b class="num" data-ap="2">3</b><small><i style="background:#FFBDA8"></i>Rejected</small></span></div>
           </a>
           <a class="cw c2 wegg" data-wid="eggs" href="#" data-toast="Eggs">
-            <span class="wegg__ic"><span class="ico" style="--i:url('https://antz-home-style-2.vercel.app/assets/icon/m-eggs.svg')"></span></span>
+            <span class="cwi" style="--c:#46CADE" aria-hidden="true"><span class="cwi__g">egg</span></span>
             <div class="wegg__ft"><b>Eggs</b><span>from clutch to hatch.</span></div>
           </a>
           <a class="cw mw mw--ink" data-wid="mortality" href="#" data-toast="Mortality">
-            <div class="mw__hd"><span class="ico" style="--i:url('https://antz-home-style-2.vercel.app/assets/icon/ki-mortality.svg')"></span><b>Mortality</b><div class="mw__seg" id="mseg" role="group" aria-label="Period"><button type="button" aria-pressed="true" data-r="0">7D</button><button type="button" aria-pressed="false" data-r="1">30D</button><button type="button" aria-pressed="false" data-r="2">30+</button></div></div>
+            <div class="mw__hd"><span class="cwi" style="--c:#FB8971" aria-hidden="true"><span class="cwi__g">monitor_heart</span></span><b>Mortality</b><div class="mw__seg" id="mseg" role="group" aria-label="Period"><button type="button" aria-pressed="true" data-r="0">7D</button><button type="button" aria-pressed="false" data-r="1">30D</button><button type="button" aria-pressed="false" data-r="2">30+</button></div></div>
             <div class="mw__ft"><div class="mw__num num" id="mortNum" style="--n:#F4B8A0">192</div><small class="mw__lbl">Deaths recorded</small></div>
           </a>
           <a class="cw mw mw--white" data-wid="natality" href="#" data-toast="Natality">
-            <div class="mw__hd"><img class="mw__img" src="https://antz-home-style-2.vercel.app/assets/icon/ki-natality.svg" alt=""><b>Natality</b><div class="mw__seg" id="nseg" role="group" aria-label="Period"><button type="button" aria-pressed="true" data-v="76">7D</button><button type="button" aria-pressed="false" data-v="318">30D</button><button type="button" aria-pressed="false" data-v="1164">30+</button></div></div>
+            <div class="mw__hd"><span class="cwi" style="--c:#37BD69" aria-hidden="true"><span class="cwi__g">child_care</span></span><b>Natality</b><div class="mw__seg" id="nseg" role="group" aria-label="Period"><button type="button" aria-pressed="true" data-v="76">7D</button><button type="button" aria-pressed="false" data-v="318">30D</button><button type="button" aria-pressed="false" data-v="1164">30+</button></div></div>
             <div class="mw__ft"><div class="mw__num num" id="natNum">76</div><small class="mw__lbl">Births recorded</small></div>
           </a>
           <a class="cw mw mw--mint" data-wid="housing" href="#" data-toast="Housing">
-            <div class="mw__hd"><b>Housing</b><span class="mw__go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></div>
+            <div class="mw__hd"><span class="cwi" style="--c:#5A8088" aria-hidden="true"><span class="cwi__g">home_work</span></span><b>Housing</b><span class="mw__go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></div>
             <div class="mw__ft mw__duo three" id="hduo"><div class="mw__sites"><div class="mw__num num" data-k="sites" data-compact>9</div><small class="mw__lbl">Sites</small></div><div><div class="mw__num num" data-k="sections" data-compact>115</div><small class="mw__lbl">Sections</small></div><div><div class="mw__num num" data-k="enclosures" data-compact>9,937</div><small class="mw__lbl">Enclosures</small></div></div>
           </a>
           <div class="cw cfh" data-wid="focus">
             <div class="cfh__hd">
-              <span class="cfh__ic"><svg class="s" viewBox="0 0 24 24"><path d="M12 3.5 14.6 9l6 .7-4.5 4.1 1.2 6L12 16.9l-5.3 2.9 1.2-6-4.5-4.1 6-.7z"/></svg></span>
+              <span class="cwi" style="--c:#8479F9" aria-hidden="true"><span class="cwi__g">bookmarks</span></span>
               <div class="cfh__ttl"><b>Focus hub</b><small>Your recents and saved work</small></div>
               <div class="cfh__tabs" id="fhTabs" role="tablist" aria-label="Focus hub"></div>
               <div class="cfh__nav"><a class="cfh__all" href="#" data-toast="Focus hub">View all<svg class="s" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
@@ -1490,15 +1823,39 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
     <!-- Notes (replaces the Modules card; Modules is kept hidden because the page script still writes to it) -->
     <div class="blk blk--qn rise" style="--d:3" id="qn">
       <div class="blk__hd"><b><i class="bi"><svg class="s" viewBox="0 0 24 24"><path d="M4 6h10M4 10h10M4 14h6"/><path d="m14.5 19.5 5-5-2-2-5 5-.5 2.5z"/></svg></i><span>Notes<small id="qnSub"></small></span></b><a href="#" data-toast="Notes">View all</a></div>
-      <form class="qn" id="qnForm" autocomplete="off">
-        <label class="qn__vh" for="qnText">Note</label>
-        <textarea class="qn__in" id="qnText" rows="1" placeholder="What did you see?"></textarea>
-        <div class="qn__bar">
-          <label class="qn__pick"><i class="qn__dot" id="qnDot"></i><span class="qn__vh">Type</span><select id="qnType"><option>Observation</option><option>Medical</option><option>Behaviour</option><option>Feeding</option><option>General</option></select><svg class="s" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></label>
-          <label class="qn__pick" id="qnAnimalPick"><svg class="s qn__paw" viewBox="0 0 24 24"><circle cx="8" cy="7" r="1.6"/><circle cx="16" cy="7" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><path d="M12 11c-2.8 0-5 3.6-5 6 0 1.6 1.4 2.4 2.8 2 .9-.3 1.4-.6 2.2-.6s1.3.3 2.2.6c1.4.4 2.8-.4 2.8-2 0-2.4-2.2-6-5-6z"/></svg><span class="qn__vh">Animal</span><select id="qnAnimal"><option value="">Animal</option></select><svg class="s" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></label>
-          <button type="submit" class="qn__send" id="qnSend" disabled aria-label="Save note"><svg class="s" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
-        </div>
-      </form>
+      <div class="nn" id="nn">
+        <button type="button" class="nn__open" id="nnOpen" aria-expanded="false" aria-controls="nnForm">
+          <span class="nn__ic nn__plus" aria-hidden="true">add</span>
+          <span class="nn__opent">New note</span>
+        </button>
+        <form class="nn__form" id="nnForm" hidden autocomplete="off" novalidate>
+          <div class="nn__top"><button type="button" class="nn__back" id="nnBack" aria-label="Close new note"><span class="nn__ic" aria-hidden="true">arrow_back</span></button><h3>New note</h3></div>
+          <div>
+            <button type="button" class="nn__field nn__pickbtn" id="nnTypeBtn" aria-expanded="false" aria-controls="nnTypes"><span class="nn__val" id="nnTypeVal"><span class="nn__ph">Note type</span></span><span class="nn__ic nn__add" aria-hidden="true">add_circle</span></button>
+            <div class="nn__pop" id="nnTypes" role="radiogroup" aria-label="Note type" hidden></div>
+          </div>
+          <label class="nn__vh" for="nnText">Notes</label>
+          <textarea class="nn__field nn__ta" id="nnText" rows="3" placeholder="Enter notes"></textarea>
+          <label class="nn__field nn__date"><span class="nn__lgd">Record date</span><input type="date" id="nnDate" aria-label="Record date"><span class="nn__ic" aria-hidden="true">calendar_month</span></label>
+          <hr class="nn__hr">
+          <div class="nn__field nn__row"><span class="nn__ic" aria-hidden="true">person</span><span id="nnNotifyL">Notify members</span><button type="button" class="nn__sw" id="nnNotify" role="switch" aria-checked="false" aria-labelledby="nnNotifyL"><i></i></button></div>
+          <div>
+            <button type="button" class="nn__field nn__pickbtn" id="nnEntBtn" aria-expanded="false" aria-controls="nnEnt"><span class="nn__val" id="nnEntVal"><span class="nn__ph">Select entity <em>*</em></span></span><span class="nn__ic nn__add" aria-hidden="true">add_circle</span></button>
+            <div class="nn__pop" id="nnEnt" hidden>
+              <div class="nn__seg" role="tablist" aria-label="Entity type"><button type="button" role="tab" data-nn-kind="animal" aria-selected="true">Animal</button><button type="button" role="tab" data-nn-kind="enclosure" aria-selected="false">Enclosure</button><button type="button" role="tab" data-nn-kind="section" aria-selected="false">Section</button></div>
+              <label class="nn__q"><span class="nn__ic" aria-hidden="true">search</span><input type="search" id="nnEntQ" placeholder="Search" aria-label="Search entities"></label>
+              <div class="nn__list" id="nnEntList" role="radiogroup" aria-label="Entity"></div>
+            </div>
+          </div>
+          <p class="nn__help">Notes related to an animal, enclosure or a section</p>
+          <div class="nn__lbl"><span class="nn__ic" aria-hidden="true">attach_file</span>Attachments</div>
+          <label class="nn__up"><input type="file" id="nnFiles" class="nn__vh" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mp3,image/jpeg,image/png,application/pdf,video/mp4,audio/mpeg"><span class="nn__upic"><span class="nn__ic" aria-hidden="true">add_photo_alternate</span></span><b>Upload files</b><small>Supported: JPEG, PNG, PDF, MP4, MP3 (max 32 MB)</small></label>
+          <ul class="nn__files" id="nnFileList"></ul>
+          <fieldset class="nn__pri"><legend>Priority</legend><div class="nn__pris" id="nnPri"></div></fieldset>
+          <p class="nn__err" id="nnErr" role="alert"></p>
+          <div class="nn__ft"><button type="button" class="nn__cancel" id="nnCancel">Cancel</button><button type="submit" class="nn__save" id="nnSave" disabled>Save note</button></div>
+        </form>
+      </div>
       <div class="qn__last" id="qnLast"></div>
     </div>
 
@@ -1517,8 +1874,9 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
     </div>
 
     <div class="blk blk--today rise" style="--d:4">
-      <div class="blk__hd"><div class="dhead"><span><b>Today</b><small>What needs doing</small></span><span class="dbadge"><small id="dMon">OCT</small><b id="dDay">29</b></span></div></div>
-      <div class="ttabs" role="tablist"><button class="hot" role="tab" data-tt="over" aria-selected="true">Overdue <span id="nOver">0</span></button><button role="tab" data-tt="pend" aria-selected="false">Pending <span id="nPend">0</span></button></div>
+      <div class="blk__hd"><div class="dhead"><span><b id="tdT">Today</b><small id="tdS">What needs doing</small></span><button type="button" class="dbadge" id="dBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="dcal" aria-label="Pick a day"><small id="dMon">OCT</small><b id="dDay">29</b></button></div></div>
+      <div class="dcal" id="dcal" role="dialog" aria-label="Pick a day" hidden></div>
+      <div class="ttabs" role="tablist"><button role="tab" data-tt="first" aria-selected="true"><em id="tFirst">Due today</em> <span id="nFirst">0</span></button><button class="hot" role="tab" data-tt="over" aria-selected="false">Overdue <span id="nOver">0</span></button></div>
       <div class="tl" id="tl"></div>
     </div>
 
@@ -1538,6 +1896,18 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
 
 <div class="fabs"><button class="qa" type="button" id="qaBtn" aria-haspopup="dialog"><span class="g"><i></i><i></i><i></i><i></i></span>Quick Actions</button><button class="chatbtn" type="button" aria-label="Communication, 3 unread" data-toast="Communication"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3C6.9 3 3 6.6 3 11c0 2.4 1.2 4.6 3.1 6.1L5.4 21l4-2.1c.8.2 1.7.3 2.6.3 5.1 0 9-3.6 9-8.1S17.1 3 12 3z"/><circle cx="8.2" cy="11" r="1.3" fill="#00AFD6"/><circle cx="12" cy="11" r="1.3" fill="#00AFD6"/><circle cx="15.8" cy="11" r="1.3" fill="#00AFD6"/></svg><span class="chatbtn__n">3</span></button></div>
 <div class="csheet" id="cAdd" aria-hidden="true"><div class="csheet__p" role="dialog" aria-modal="true" aria-labelledby="cAddT"><div class="csheet__hd"><div><b id="cAddT">Add widgets</b><small>Widgets for the centre board</small></div><button class="csheet__x" type="button" data-cclose aria-label="Close"><svg class="s" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div id="cAddList"></div></div></div>
+<div class="wcon" id="wcon" aria-hidden="true">
+  <div class="wcon__p" role="dialog" aria-modal="true" aria-labelledby="wconT">
+    <div class="wcon__hd">
+      <button class="wcon__back" type="button" id="wconBack" aria-label="Back to all widgets" hidden><svg class="s" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+      <div class="wcon__ttl"><b id="wconT">Add a widget</b><small id="wconSub"></small></div>
+      <button class="csheet__x" type="button" data-wclose aria-label="Close"><svg class="s" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="wcon__bar" id="wconBar"><div class="wcon__chips" id="wconChips" role="group" aria-label="Module group"></div><label class="wcon__q" id="wconQl"><svg class="s" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="wconQ" type="search" placeholder="Find a module" aria-label="Find a module" autocomplete="off"></label></div>
+    <div class="wcon__body" id="wconBody"></div>
+    <div class="wcon__ft" id="wconFt" hidden><span id="wconPick"></span><button class="wcon__add" type="button" id="wconAdd"><svg class="s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add to board</button></div>
+  </div>
+</div>
 <div class="qm" id="qm" aria-hidden="true">
   <div class="qm__panel" role="dialog" aria-modal="true" aria-labelledby="qmTitle">
     <div class="qm__hd">
@@ -1769,9 +2139,139 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
     return w;
   }
   PINS.forEach(function (m) { cb.appendChild(pinWidget(m)); });
+  /* module widgets added from the console (widget-lib.js): [{ k, mod, size: 's' | 'l' }]. Each draws inside a
+     shadow root with widget-lib.css, so its styles and the board's never touch; a slot keeps the edit buttons */
+  var W6 = window.ANTZ_WIDGETS, XKEY = 'antz-s6-widgets', XV = '20261103g', XW = [];
+  try { XW = JSON.parse(localStorage.getItem(XKEY) || '[]') || []; } catch (e) { XW = []; }
+  if (!W6) XW = [];
+  function xSave() { try { localStorage.setItem(XKEY, JSON.stringify(XW)); } catch (e) {} }
+  function xSizeName(z) { return z === 's' ? 'Small' : 'Large'; }
+  function xShadow(host, mod, size, opts) {
+    var r = host.shadowRoot || host.attachShadow({ mode: 'open' });
+    r.innerHTML = '<link rel="stylesheet" href="widget-lib.css?v=' + XV + '"><style>:host(.ph) .w { visibility: hidden; }</style>' + W6.card(mod, size, opts) + '<slot></slot>';
+    /* board widgets re-measure once their styles are in */
+    if (host.classList.contains('xw')) $('link', r).addEventListener('load', function () { xfit(host); });
+    return r;
+  }
+  function xWidget(x) {
+    var w = document.createElement('div'); w.className = 'cw xw xw--' + x.size; w.dataset.wid = x.k; w.dataset.mod = x.mod; w.dataset.size = x.size;
+    w.setAttribute('data-toast', W6.name(x.mod));
+    w.innerHTML = '<button type="button" class="xsz" aria-label="Change size of ' + esc(W6.name(x.mod)) + '"><svg class="s" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg><span>' + xSizeName(x.size) + '</span></button>';
+    var r = xShadow(w, x.mod, x.size, { fill: 1, fit: 1 });
+    /* period tabs inside a large widget re-draw just that widget; links stay on the board */
+    r.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-per]');
+      if (b) { e.preventDefault(); e.stopPropagation(); var k = b.dataset.per.split(':'); W6.setPeriod(k[0], k[1]); xShadow(w, w.dataset.mod, w.dataset.size, { fill: 1, still: 1 }); xfit(w); return; }
+      if (e.target.closest('a')) e.preventDefault();
+    });
+    return w;
+  }
+  /* ── board layout: packed, with no holes. Each card keeps its width (twelfths, or halves on a phone) and goes
+     where it sits highest; then cards grow sideways into empty columns and down to the card below (or the
+     board's bottom). Small module widgets start 1:1 and large ones at their content height, then both stretch to fill. ── */
+  function trackCount(v) { var m = /repeat\((\d+)/.exec(v); return m ? +m[1] : v.trim().split(/\s+(?![^(]*\))/).length; }
+  function spanOf(v) { var m = /span\s+(\d+)/.exec(v); return m ? +m[1] : 1; }
+  var packing = false;
+  function pack() {
+    if (packing || !cb.clientWidth) return; packing = true;
+    var cs = getComputedStyle(cb), N = trackCount(cs.gridTemplateColumns) || 12, gap = parseFloat(cs.columnGap) || 14, rgap = parseFloat(cs.rowGap) || gap, row = parseFloat(cs.gridAutoRows) || 71;
+    var colW = (cb.clientWidth - (N - 1) * gap) / N, i;
+    var X = function (c) { return c * (colW + gap); }, WD = function (k) { return k * colW + (k - 1) * gap; };
+    /* the card's own size; a card already marked to show its detailed widget keeps the width it grew to and
+       takes the detailed widget's height */
+    var base = cws().map(function (w) {
+      var st = getComputedStyle(w), k = Math.min(N, spanOf(st.gridColumnStart + ' ' + st.gridColumnEnd)), h = 0;
+      if (w.classList.contains('xw')) {
+        if (w.dataset.size === 's') h = WD(k);
+        else { var a = w.shadowRoot && w.shadowRoot.querySelector('.w'); w.style.width = WD(k) + 'px'; if (a) { a.style.height = 'auto'; h = a.offsetHeight; a.style.height = ''; } h = Math.max(h, 2 * row + rgap); }
+      } else { var r = spanOf(st.gridRowStart + ' ' + st.gridRowEnd); h = r * row + (r - 1) * rgap; }
+      return { el: w, k: k, h: h, mod: detailMod(w) };
+    });
+    function layout(big) {
+      var sky = []; for (i = 0; i < N; i++) sky.push(0);
+      var items = base.map(function (b) { var g = big.get(b.el); return g ? { el: b.el, k: g, h: detailH(b.mod, WD(g)), big: 1, k0: g, h0: 0 } : { el: b.el, k: b.k, h: b.h, k0: b.k, h0: b.h }; });
+      items.forEach(function (it) {
+        var best = 0, top = Infinity;
+        /* highest spot first; between equal ones, the one that leaves the least empty space under the card */
+        for (var c = 0, waste = Infinity; c + it.k <= N; c++) { var seg = sky.slice(c, c + it.k), t = Math.max.apply(null, seg), wst = seg.reduce(function (n, v) { return n + t - v; }, 0); if (t < top - .5 || (Math.abs(t - top) <= .5 && wst < waste)) { top = t; best = c; waste = wst; } }
+        it.c = best; it.top = top; for (var j = best; j < best + it.k; j++) sky[j] = top + it.h + rgap;
+      });
+      var bottom = Math.max.apply(null, sky) - rgap;
+      var hits = function (c0, c1, t, b, self) { return items.some(function (o) { return o !== self && o.c <= c1 && o.c + o.k - 1 >= c0 && o.top < b - .5 && o.top + o.h > t + .5; }); };
+      items.forEach(function (it) {
+        while (it.c + it.k < N && !hits(it.c + it.k, it.c + it.k, it.top, it.top + it.h, it)) it.k++;
+        while (it.c > 0 && !hits(it.c - 1, it.c - 1, it.top, it.top + it.h, it)) { it.c--; it.k++; }
+      });
+      items.forEach(function (it) {
+        var floor = bottom;
+        items.forEach(function (o) { if (o !== it && o.c <= it.c + it.k - 1 && o.c + o.k - 1 >= it.c && o.top >= it.top + it.h - .5) floor = Math.min(floor, o.top - rgap); });
+        if (floor > it.top + it.h) it.h = floor - it.top;
+      });
+      items.bottom = bottom;
+      return items;
+    }
+    /* first pass at the cards' own sizes; any card stretched well past them switches to its detailed widget and
+       the board is laid out again at that size (a few passes at most, since cards only ever switch one way) */
+    var big = new Map(), items = layout(big);
+    for (var pass = 0; pass < 3 && MREADY; pass++) {
+      var more = false;
+      items.forEach(function (it) { var b = base[items.indexOf(it)]; if (!it.big && b.mod && (it.h > it.h0 * 1.3 || it.k > it.k0 * 1.3)) { big.set(it.el, it.k); more = true; } });
+      if (!more) break; items = layout(big);
+    }
+    items.forEach(function (it) { showDetail(it.el, !!big.get(it.el)); });
+    items.forEach(function (it) { var st = it.el.style; st.left = X(it.c) + 'px'; st.top = it.top + 'px'; st.width = WD(it.k) + 'px'; st.height = it.h + 'px'; });
+    cb.style.height = Math.max(0, items.bottom) + 'px';
+    packing = false;
+  }
+  /* a card the board stretched well past its own size shows its detailed (large) widget instead, when that fits */
+  var BUILT = { animals: 'animals', approvals: 'approvals', eggs: 'eggs', mortality: 'mortality', natality: 'natality', housing: 'housing' };
+  var MH = document.createElement('div'), MR, MREADY = false, MCACHE = {};
+  MH.setAttribute('aria-hidden', 'true'); MH.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none';
+  document.body.appendChild(MH); MR = MH.attachShadow({ mode: 'open' });
+  if (W6) { MR.innerHTML = '<link rel="stylesheet" href="widget-lib.css?v=' + XV + '"><div></div>'; $('link', MR).addEventListener('load', function () { MREADY = true; MCACHE = {}; pack(); }); }
+  function detailH(mod, w) {
+    var key = mod + '|' + Math.round(w); if (MCACHE[key] != null) return MCACHE[key];
+    MH.style.width = w + 'px'; var box = MR.lastChild; box.innerHTML = W6.card(mod, 'l', { still: 1 });
+    return (MCACHE[key] = box.firstChild.offsetHeight);
+  }
+  function detailMod(el) {
+    if (!W6) return null;
+    if (el.classList.contains('xw')) return el.dataset.size === 'l' ? null : el.dataset.mod;
+    return BUILT[el.dataset.wid] || null;
+  }
+  function showDetail(el, on) {
+    var mod = detailMod(el); if (!mod) return;
+    if (on === (el.dataset.shown === 'l')) return;
+    el.dataset.shown = on ? 'l' : '';
+    if (el.classList.contains('xw')) { xShadow(el, mod, on ? 'l' : 's', { fill: 1, still: 1 }); return; }
+    var d = $('.cw__detail', el);
+    if (on && !d) {
+      d = document.createElement('div'); d.className = 'cw__detail'; el.appendChild(d);
+      var r = d.attachShadow({ mode: 'open' });
+      r.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-per]');
+        if (b) { e.preventDefault(); e.stopPropagation(); var k = b.dataset.per.split(':'); W6.setPeriod(k[0], k[1]); r.innerHTML = r.innerHTML.replace(/<article[\s\S]*<\/article>/, W6.card(mod, 'l', { fill: 1, still: 1 })); return; }
+        if (e.target.closest('a')) e.preventDefault();
+      });
+    }
+    if (on) d.shadowRoot.innerHTML = '<link rel="stylesheet" href="widget-lib.css?v=' + XV + '">' + W6.card(mod, 'l', { fill: 1, still: 1 });
+    el.classList.toggle('is-detail', on);
+  }
+  function xfit() { pack(); }
+  function xfitAll() { pack(); }
+  var xft; window.addEventListener('resize', function () { clearTimeout(xft); xft = setTimeout(xfitAll, 120); });
+  if (window.ResizeObserver) { var cbW = 0; new ResizeObserver(function () { if (cb.clientWidth !== cbW) { cbW = cb.clientWidth; pack(); } }).observe(cb); }
+  window.addEventListener('load', pack);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(xfitAll);
+  /* Focus hub always uses the board's own card: generic focus widgets are dropped and that card comes back */
+  var hadFocus = XW.some(function (x) { return x.mod === 'focus'; });
+  if (hadFocus) { XW = XW.filter(function (x) { return x.mod !== 'focus'; }); xSave(); }
+  XW.forEach(function (x) { if (W6.find(x.mod)) cb.appendChild(xWidget(x)); });
+  function xDrop(k) { XW = XW.filter(function (x) { return x.k !== k; }); xSave(); }
   function savePins() { try { localStorage.setItem(PKEY, JSON.stringify(PINS)); } catch (e) {} }
   var CNAMES = { animals: ['Animals', 'Newly added, by site'], approvals: ['Approvals', 'Transfers and requests'], mortality: ['Mortality', 'Deaths recorded'], natality: ['Natality', 'Births recorded'], focus: ['Focus hub', 'Recents, favourites, bookmarks, folders'], eggs: ['Eggs', 'From clutch to hatch'], housing: ['Housing', 'Enclosures and sections'] };
   PINS.forEach(function (m) { CNAMES[pinKey(m[0])] = [m[0], 'Module shortcut']; });
+  XW.forEach(function (x) { CNAMES[x.k] = [W6.name(x.mod), xSizeName(x.size) + ' widget']; });
   function cws() { return $$('#cboard > .cw'); }
   cws().forEach(function (w) { var d = document.createElement('button'); d.type = 'button'; d.className = 'cdel'; d.setAttribute('aria-label', 'Remove ' + CNAMES[w.dataset.wid][0]); d.innerHTML = '<svg class="s" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>'; w.appendChild(d); });
   var DEF = cws().map(function (w) { return w.dataset.wid; });
@@ -1782,7 +2282,23 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
     st.order.forEach(function (k) { var w = $('#cboard > [data-wid="' + k + '"]'); if (w) cb.appendChild(w); });
   }
   try { var sv = JSON.parse(localStorage.getItem(CKEY) || 'null'); if (sv && sv.order) capply(sv); } catch (e) {}
-  function csave() { try { localStorage.setItem(CKEY, JSON.stringify(cstate())); } catch (e) {} }
+  if (hadFocus && shelf.focus) { cb.appendChild(shelf.focus); delete shelf.focus; csave(); }
+  pack();
+  /* page-load: once the page is in (at least ~0.5s of shimmer, at most ~1.6s), cards rise in, top-left first,
+     70ms apart; their numbers blur into focus and their bars grow (as in the animated dashboard card reference) */
+  var revealed = false, t0 = performance.now();
+  function reveal() {
+    if (revealed) return; revealed = true;
+    var root = document.documentElement;
+    cws().slice().sort(function (a, b) { return (parseFloat(a.style.top) || 0) - (parseFloat(b.style.top) || 0) || (parseFloat(a.style.left) || 0) - (parseFloat(b.style.left) || 0); })
+      .forEach(function (w, i) { w.style.setProperty('--i', i); });
+    $$('.side .blk').forEach(function (b, i) { b.style.setProperty('--i', i); });
+    if (root.classList.contains('preload')) { root.classList.remove('preload'); root.classList.add('entering'); setTimeout(function () { root.classList.remove('entering'); }, 2400); }
+    document.dispatchEvent(new Event('antz-ready'));
+  }
+  function revealSoon() { setTimeout(reveal, Math.max(0, 550 - (performance.now() - t0))); }
+  if (document.readyState === 'complete') revealSoon(); else { window.addEventListener('load', revealSoon); setTimeout(reveal, 1600); }
+  function csave() { Object.keys(shelf).forEach(function (k) { if (k.indexOf('x-') === 0) { delete shelf[k]; xDrop(k); } }); try { localStorage.setItem(CKEY, JSON.stringify(cstate())); } catch (e) {} }
   function dirty() { $('#undoBtn').disabled = !snap || (JSON.stringify(snap) === JSON.stringify(cstate()) && (!mSnap || mSnap.join() === MORDER.join())); }
   var mSnap = null;
   function setEdit(on) {
@@ -1795,30 +2311,57 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
   $('#doneBtn').addEventListener('click', function () { setEdit(false); });
   $('#undoBtn').addEventListener('click', function () { if (snap) { cflip(function () { capply(snap); }); if (mSnap) { MORDER = mSnap.slice(); renderMods(); } dirty(); note('Changes undone'); } });
   function cflip(change) {
-    var before = new Map(); cws().forEach(function (w) { before.set(w, w.getBoundingClientRect()); }); change(); if (reduce) return;
+    var before = new Map(); cws().forEach(function (w) { before.set(w, w.getBoundingClientRect()); }); change(); pack(); if (reduce) return;
     cws().forEach(function (w) { if (drag && w === drag.el) return; var a = before.get(w); if (!a) return; var b = w.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (!dx && !dy) return;
       w.style.transition = 'none'; w.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; requestAnimationFrame(function () { requestAnimationFrame(function () { w.style.transition = 'transform .3s cubic-bezier(.2,.7,.2,1)'; w.style.transform = ''; }); }); });
   }
   document.addEventListener('click', function (e) {
     if (!editing || !e.target.closest('#cboard')) return;
     var d = e.target.closest('.cdel'); e.preventDefault(); e.stopPropagation();
+    var z = e.target.closest('.xsz');
+    if (z) { var xw = z.closest('.xw'), nz = xw.dataset.size === 's' ? 'l' : 's'; cflip(function () { xw.dataset.size = nz; xw.className = xw.className.replace(/xw--[sl]/, 'xw--' + nz); $('span', z).textContent = xSizeName(nz); xShadow(xw, xw.dataset.mod, nz, { fill: 1, still: 1 }); xfit(xw); });
+      XW.forEach(function (x) { if (x.k === xw.dataset.wid) x.size = nz; }); xSave(); CNAMES[xw.dataset.wid][1] = xSizeName(nz) + ' widget'; note(W6.name(xw.dataset.mod) + ' · ' + xSizeName(nz).toLowerCase()); return; }
     if (d) { var w = d.closest('.cw'), k = w.dataset.wid; askRemove(k, function () { cflip(function () { w.remove(); if (k.indexOf('mod-') === 0) unpin(k); else shelf[k] = w; }); dirty(); note(CNAMES[k][0] + ' removed · add it back from Add widget');  }); }
   }, true);
   cb.addEventListener('dragstart', function (e) { e.preventDefault(); });
+  /* drag a card anywhere, any time: outside Edit, dragging one card over another swaps them (and saves);
+     in Edit it slots in between, with Undo. Controls inside a card (tabs, buttons, scrolling strips) stay
+     usable; on touch, press and hold a moment before dragging so the page still scrolls. */
+  var NODRAG = 'button, input, select, textarea, label, [role="tab"], .mw__seg, .seg, .cfh__track, .cfh__tabs, .sbars, .go, .mw__go';
+  var justDragged = false;
+  function onControl(e) { var p = e.composedPath ? e.composedPath() : [e.target]; for (var i = 0; i < p.length; i++) { var n = p[i]; if (n === cb) break; if (n.matches && n.matches(NODRAG)) return true; } return false; }
+  function swapEls(a, b) { var an = a.nextSibling, bn = b.nextSibling; if (an === b) { cb.insertBefore(b, a); return; } if (bn === a) { cb.insertBefore(a, b); return; } cb.insertBefore(a, bn); cb.insertBefore(b, an); }
   cb.addEventListener('pointerdown', function (e) {
-    var w = e.target.closest('#cboard > .cw'); if (!w || !editing || e.target.closest('.cdel')) return;
-    var r = w.getBoundingClientRect(); drag = { el: w, id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top, sx: e.clientX, sy: e.clientY, live: false, w: r.width, h: r.height };
+    var w = e.target.closest('#cboard > .cw'); if (!w || e.button !== 0 || e.target.closest('.cdel, .xsz')) return;
+    if (!editing && onControl(e)) return;
+    var r = w.getBoundingClientRect(), touch = e.pointerType === 'touch' && !editing;
+    drag = { el: w, id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top, sx: e.clientX, sy: e.clientY, live: false, w: r.width, h: r.height, free: !editing, armed: !touch };
+    if (touch) { var d0 = drag; d0.timer = setTimeout(function () { if (drag === d0) { d0.armed = true; w.classList.add('is-lift'); } }, 320); }
   });
   cb.addEventListener('pointermove', function (e) {
     var d = drag; if (!d || e.pointerId !== d.id) return;
-    if (!d.live) { if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return; d.live = true; var g = d.el.cloneNode(true); g.classList.add('cghost'); g.style.width = d.w + 'px'; g.style.height = d.h + 'px'; document.body.appendChild(g); d.g = g; d.el.classList.add('ph'); document.body.classList.add('dragging'); try { cb.setPointerCapture(d.id); } catch (x) {} }
+    if (!d.armed) { if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 8) { clearTimeout(d.timer); drag = null; } return; }
+    if (!d.live) { if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return; d.live = true; d.el.classList.remove('is-lift'); var g = d.el.cloneNode(true); if (d.el.shadowRoot) xShadow(g, d.el.dataset.mod, d.el.dataset.size, { fill: 1, still: 1 }); g.classList.remove('is-detail'); g.classList.add('cghost'); g.style.width = d.w + 'px'; g.style.height = d.h + 'px'; document.body.appendChild(g); d.g = g; d.el.classList.add('ph'); document.body.classList.add('dragging'); try { cb.setPointerCapture(d.id); } catch (x) {} }
     d.g.style.left = (e.clientX - d.ox) + 'px'; d.g.style.top = (e.clientY - d.oy) + 'px';
     var t = document.elementFromPoint(e.clientX, e.clientY); t = t && t.closest('#cboard > .cw');
-    if (t && t !== d.el && t !== d.last) { d.last = t; var l = cws(), a = l.indexOf(d.el), b = l.indexOf(t); cflip(function () { cb.insertBefore(d.el, a < b ? t.nextSibling : t); }); dirty(); }
+    if (t && t !== d.el && t !== d.last) {
+      d.last = t;
+      if (d.free) { cflip(function () { swapEls(d.el, t); }); d.moved = true; }
+      else { var l = cws(), a = l.indexOf(d.el), b = l.indexOf(t); cflip(function () { cb.insertBefore(d.el, a < b ? t.nextSibling : t); }); dirty(); }
+    }
     if (!t) d.last = null;
   });
-  function cend() { var d = drag; drag = null; if (!d || !d.live) return; d.g.remove(); d.el.classList.remove('ph'); document.body.classList.remove('dragging'); }
+  function cend() {
+    var d = drag; drag = null; if (!d) return; clearTimeout(d.timer); d.el.classList.remove('is-lift'); if (!d.live) return;
+    d.g.remove(); d.el.classList.remove('ph'); document.body.classList.remove('dragging');
+    justDragged = true; setTimeout(function () { justDragged = false; }, 0);
+    if (d.free && d.moved) { csave(); note('Board saved'); }
+  }
   cb.addEventListener('pointerup', cend); cb.addEventListener('pointercancel', cend);
+  /* a drag never counts as a click on the card it ends on */
+  cb.addEventListener('click', function (e) { if (justDragged) { e.preventDefault(); e.stopPropagation(); } }, true);
+  cb.addEventListener('touchmove', function (e) { if (drag && (drag.live || drag.armed && drag.free)) e.preventDefault(); }, { passive: false });
+  cb.addEventListener('contextmenu', function (e) { if (drag && drag.armed && e.pointerType !== 'mouse') e.preventDefault(); });
   var cAdd = $('#cAdd');
   function renderAdd() {
     $('#cAddList').innerHTML = Object.keys(CNAMES).filter(function (k) { return k.indexOf('mod-') !== 0; }).map(function (k) {
@@ -1827,7 +2370,138 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
         (off ? '<button type="button" class="add" data-cadd="' + k + '">+ Add</button>' : '<span class="on">✓ On board</span><button type="button" class="rm" data-crm="' + k + '">Remove</button>') + '</div>';
     }).join('');
   }
-  $('#addBtn').addEventListener('click', function () { renderAdd(); cAdd.classList.add('on'); cAdd.setAttribute('aria-hidden', 'false'); });
+  $('#addBtn').addEventListener('click', function () { if (W6) wconOpen(); else { renderAdd(); cAdd.classList.add('on'); cAdd.setAttribute('aria-hidden', 'false'); } });
+
+  /* ── widget console: every module's widget as a live preview. Tick several (or pick a size in a widget's
+     detail), then add them together; or reset the board to the default view ── */
+  var wcon = $('#wcon'), WC = { group: 'All', q: '', mod: null, size: 's', sel: [], confirm: false };
+  var DEFVIEW = ['animals', 'approvals', 'eggs', 'mortality', 'natality', 'housing'];
+  if (W6) { var fa = W6.find('focus'); if (fa) { fa.appName = 'Focus hub'; fa.appSub = 'Your recents and saved work'; } }
+  function wconOpen() { WC.q = ''; WC.sel = []; WC.confirm = false; $('#wconQ').value = ''; wconBrowse(); wcon.classList.add('on'); wcon.setAttribute('aria-hidden', 'false'); setTimeout(function () { $('#wconQ').focus(); }, 60); }
+  function wconClose() { wcon.classList.remove('on'); wcon.setAttribute('aria-hidden', 'true'); $('#addBtn').focus(); }
+  function wconMount() { $$('[data-pv]', $('#wconBody')).forEach(function (el) { if (el.dataset.pv === 'focus') fhPreview(el); else xShadow(el, el.dataset.pv, el.dataset.sz, { fill: el.dataset.sz === 's', still: 1 }); }); }
+  /* Focus hub's preview is a scaled copy of the board's own card */
+  function fhCard() { return $('#cboard > [data-wid="focus"]') || shelf.focus; }
+  function fhPreview(box) {
+    var src = fhCard(); if (!src) return;
+    var W = src.offsetWidth || 1012, H = src.offsetHeight || 326, c = src.cloneNode(true);
+    $$('[id]', c).forEach(function (n) { n.removeAttribute('id'); }); c.removeAttribute('style'); c.classList.remove('is-detail');
+    c.style.cssText = 'left:0;top:0;width:' + W + 'px;height:' + H + 'px';
+    var wrap = document.createElement('div'); wrap.className = 'cboard wfh'; wrap.setAttribute('aria-hidden', 'true');
+    wrap.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; wrap.appendChild(c);
+    box.innerHTML = ''; box.classList.add('wpv-fh'); box.appendChild(wrap);
+    requestAnimationFrame(function () { var s = box.clientWidth / W; wrap.style.transform = 'scale(' + s + ')'; if (box.classList.contains('wopt__pv')) box.style.height = Math.round(H * s) + 'px'; });
+  }
+  function selIdx(mod) { for (var i = 0; i < WC.sel.length; i++) if (WC.sel[i].mod === mod) return i; return -1; }
+  function wconDefault() {
+    var names = DEFVIEW.map(function (k) { return CNAMES[k] ? CNAMES[k][0] : k; }).join(', ');
+    return '<div class="wcon__view"><span class="wcon__viewic" aria-hidden="true"><svg class="s" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/></svg></span>' +
+      '<span class="wcon__viewt"><b>Default view</b><small>' + esc(names) + '</small></span>' +
+      (WC.confirm ? '<span class="wcon__viewq">Replace your board?</span><button type="button" class="wcon__ghost" data-wview="no">Cancel</button><button type="button" class="wcon__solid" data-wview="yes">Use default view</button>'
+        : '<button type="button" class="wcon__ghost" data-wview="ask">Use this view</button>') + '</div>';
+  }
+  function wconBrowse() {
+    WC.mod = null;
+    $('#wconBack').hidden = true; $('#wconQl').hidden = false; $('#wconChips').hidden = false; $('#wconBar').hidden = false;
+    $('#wconT').textContent = 'Add widgets'; $('#wconSub').textContent = 'Tick to add several · open one to pick its size';
+    var count = function (g) { return g === 'All' ? W6.apps.length : W6.apps.filter(function (a) { return a.group === g; }).length; };
+    $('#wconChips').innerHTML = ['All'].concat(W6.groups.filter(count)).map(function (g) { return '<button type="button" data-wg="' + esc(g) + '" aria-pressed="' + (WC.group === g) + '">' + esc(g) + '<span>' + count(g) + '</span></button>'; }).join('');
+    var q = WC.q.toLowerCase(), shown = W6.apps.filter(function (a) { return (WC.group === 'All' || a.group === WC.group) && (!q || [W6.name(a.id), a.name, W6.sub(a.id), a.group].join(' ').toLowerCase().indexOf(q) > -1); });
+    var groups = {}; shown.forEach(function (a) { (groups[a.group] = groups[a.group] || []).push(a); });
+    var keys = Object.keys(groups).sort(function (x, y) { return (W6.groups.indexOf(x) + 1 || 99) - (W6.groups.indexOf(y) + 1 || 99); });
+    /* the board's own cards that were taken off can come back from here too */
+    var back = Object.keys(shelf).filter(function (k) { return k.indexOf('mod-') !== 0 && k.indexOf('x-') !== 0; });
+    var top = !q && WC.group === 'All';
+    $('#wconBody').innerHTML = (top ? wconDefault() : '') +
+      (back.length && top ? '<div class="wcon__shelf"><span>Taken off your board</span>' + back.map(function (k) { return '<button type="button" data-wback="' + k + '">+ ' + esc(CNAMES[k][0]) + '</button>'; }).join('') + '</div>' : '') +
+      (keys.length ? keys.map(function (g) {
+        return '<div class="wcon__grp"><h3>' + esc(g) + '</h3><span>' + groups[g].length + '</span></div><div class="wcon__grid">' + groups[g].map(function (a) {
+          var on = selIdx(a.id) > -1, nm = esc(W6.name(a.id));
+          return '<div class="wtile' + (on ? ' is-sel' : '') + '"><button type="button" class="wtile__open" data-wmod="' + a.id + '" aria-label="' + nm + ', see both sizes"><span class="wtile__pv" data-pv="' + a.id + '" data-sz="s"></span><b>' + nm + '</b><small><i>' + (a.id === 'focus' ? 'Full width' : '2 sizes') + '</i><span>' + esc(W6.sub(a.id)) + '</span></small></button>' +
+            '<button type="button" class="wtile__ck" role="checkbox" aria-checked="' + on + '" data-wsel="' + a.id + '" aria-label="Select ' + nm + '"><svg class="s" viewBox="0 0 24 24"><path d="' + (on ? 'm5 12 5 5L20 7' : 'M12 5v14M5 12h14') + '"/></svg></button></div>';
+        }).join('') + '</div>';
+      }).join('') : '<p class="wcon__none">No module matches “' + esc(WC.q) + '”</p>');
+    wconMount(); wconFoot();
+  }
+  function wconDetail(mod) {
+    WC.mod = mod; var i = selIdx(mod); WC.size = mod === 'focus' ? 'l' : i > -1 ? WC.sel[i].size : 's';
+    $('#wconBack').hidden = false; $('#wconQl').hidden = true; $('#wconChips').hidden = true; $('#wconBar').hidden = true;
+    $('#wconT').textContent = W6.name(mod); $('#wconSub').textContent = 'Pick a size · ' + W6.sub(mod);
+    var opt = function (z, t, d) { return '<button type="button" class="wopt wopt--' + z + '" role="radio" data-wsz="' + z + '" aria-checked="' + (WC.size === z) + '"><span class="wopt__lbl"><i class="wopt__dot"></i><span><b>' + t + '</b><small>' + d + '</small></span></span><span class="wopt__pv wopt__pv--' + z + '" data-pv="' + mod + '" data-sz="' + z + '"></span></button>'; };
+    $('#wconBody').innerHTML = mod === 'focus' ? '<div class="wdet wdet--one" role="radiogroup" aria-label="Widget size"><button type="button" class="wopt" role="radio" data-wsz="l" aria-checked="true"><span class="wopt__lbl"><i class="wopt__dot"></i><span><b>Full width</b><small>Recents, favourites, bookmarks and folders · ' + (fhCard() && fhCard().isConnected ? 'already on your board' : 'one size') + '</small></span></span><span class="wopt__pv" data-pv="focus" data-sz="l"></span></button></div>'
+      : '<div class="wdet" role="radiogroup" aria-label="Widget size">' + opt('s', 'Small', '1:1 · the one number that matters') + opt('l', 'Large', 'Twice as wide · charts, lists and period tabs') + '</div>';
+    $('#wconBody').scrollTop = 0; wconMount(); wconFoot(); $('#wconBack').focus();
+  }
+  function wconPick() { $$('.wopt', $('#wconBody')).forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.wsz === WC.size)); }); wconFoot(); }
+  /* the footer: in a widget's detail, add it now or keep it in the selection; while browsing, the selection tray */
+  function wconFoot() {
+    var ft = $('#wconFt'), n = WC.sel.length, add = '<svg class="s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+    if (WC.mod) {
+      var inSel = selIdx(WC.mod) > -1;
+      ft.hidden = false;
+      ft.innerHTML = '<span class="wcon__pick">' + esc(W6.name(WC.mod)) + ' · ' + (WC.mod === 'focus' ? 'Full width' : WC.size === 's' ? 'Small, 1:1' : 'Large, detailed') + '</span>' +
+        '<button type="button" class="wcon__ghost" data-wkeep>' + (inSel ? 'Update selection' : 'Add to selection') + '</button>' +
+        '<button type="button" class="wcon__add" data-wgo>' + add + (n && !inSel ? 'Add ' + (n + 1) + ' widgets' : n > 1 ? 'Add ' + n + ' widgets' : 'Add to board') + '</button>';
+      return;
+    }
+    ft.hidden = !n;
+    if (!n) { ft.innerHTML = ''; return; }
+    ft.innerHTML = '<div class="wcon__tray" aria-label="Selected widgets">' + WC.sel.map(function (x) {
+      return '<span class="wsel"><b>' + esc(W6.name(x.mod)) + '</b>' + (x.mod === 'focus' ? '' : '<button type="button" class="wsel__sz" data-wtz="' + x.mod + '" aria-label="Size of ' + esc(W6.name(x.mod)) + ': ' + (x.size === 's' ? 'small' : 'large') + '. Switch">' + (x.size === 's' ? 'S' : 'L') + '</button>') + '<button type="button" class="wsel__x" data-wun="' + x.mod + '" aria-label="Remove ' + esc(W6.name(x.mod)) + ' from selection"><svg class="s" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span>';
+    }).join('') + '</div><button type="button" class="wcon__ghost" data-wclear>Clear</button><button type="button" class="wcon__add" data-wgo>' + add + 'Add ' + n + (n === 1 ? ' widget' : ' widgets') + '</button>';
+  }
+  function wconToggle(mod, size) { var i = selIdx(mod); if (i > -1) WC.sel.splice(i, 1); else WC.sel.push({ mod: mod, size: size || 's' }); }
+  /* one widget onto the board, first in line; the rest of the board reflows around it */
+  function addOne(x0) {
+    var x = { k: 'x-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), mod: x0.mod, size: x0.size }, w = xWidget(x);
+    XW.push(x); CNAMES[x.k] = [W6.name(x.mod), xSizeName(x.size) + ' widget'];
+    var d = document.createElement('button'); d.type = 'button'; d.className = 'cdel'; d.setAttribute('aria-label', 'Remove ' + CNAMES[x.k][0]); d.innerHTML = '<svg class="s" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>'; w.appendChild(d);
+    return w;
+  }
+  function wconGo() {
+    var list = WC.sel.slice();
+    if (WC.mod) { var i = selIdx(WC.mod); if (i > -1) list[i].size = WC.size; else list.push({ mod: WC.mod, size: WC.size }); }
+    if (!list.length) return;
+    var fh = list.some(function (x) { return x.mod === 'focus'; }); list = list.filter(function (x) { return x.mod !== 'focus'; });
+    var fhBack = fh && shelf.focus; if (fhBack) delete shelf.focus;
+    if (!list.length && !fhBack) { WC.sel = []; wconClose(); note('Focus hub is already on your board'); return; }
+    var els = list.map(addOne); xSave();
+    cflip(function () { if (fhBack) cb.appendChild(fhBack); els.slice().reverse().forEach(function (w) { cb.insertBefore(w, cb.firstChild); }); });
+    if (editing) dirty(); else csave();
+    WC.sel = []; wconClose();
+    var n = list.length + (fhBack ? 1 : 0), first = els[0] || fhBack;
+    note(n === 1 ? (els[0] ? CNAMES[els[0].dataset.wid][0] + ' added · ' + xSizeName(list[0].size).toLowerCase() : 'Focus hub added') : n + ' widgets added');
+    first.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  }
+  /* default view: just the six module cards, in their usual order; everything else comes off the board */
+  function wconUseDefault() {
+    cflip(function () {
+      cws().forEach(function (w) {
+        var k = w.dataset.wid; if (DEFVIEW.indexOf(k) > -1) return;
+        w.remove(); if (k.indexOf('mod-') === 0) unpin(k); else shelf[k] = w;
+      });
+      DEFVIEW.forEach(function (k) { var w = shelf[k] || $('#cboard > [data-wid="' + k + '"]'); if (!w) return; delete shelf[k]; cb.appendChild(w); });
+    });
+    csave(); xSave(); WC.confirm = false; wconClose(); note('Default view · ' + DEFVIEW.length + ' widgets');
+  }
+  wcon.addEventListener('click', function (e) {
+    var t;
+    if (e.target === wcon || e.target.closest('[data-wclose]')) { wconClose(); return; }
+    if ((t = e.target.closest('[data-wg]'))) { WC.group = t.dataset.wg; wconBrowse(); return; }
+    if ((t = e.target.closest('[data-wsel]'))) { wconToggle(t.dataset.wsel); var tile = t.closest('.wtile'), on = selIdx(t.dataset.wsel) > -1; tile.classList.toggle('is-sel', on); t.setAttribute('aria-checked', String(on)); $('path', t).setAttribute('d', on ? 'm5 12 5 5L20 7' : 'M12 5v14M5 12h14'); wconFoot(); return; }
+    if ((t = e.target.closest('[data-wmod]'))) { wconDetail(t.dataset.wmod); return; }
+    if ((t = e.target.closest('[data-wsz]'))) { WC.size = t.dataset.wsz; wconPick(); return; }
+    if (e.target.closest('[data-wkeep]')) { var i = selIdx(WC.mod); if (i > -1) WC.sel[i].size = WC.size; else WC.sel.push({ mod: WC.mod, size: WC.size }); wconBrowse(); return; }
+    if ((t = e.target.closest('[data-wtz]'))) { var j = selIdx(t.dataset.wtz); WC.sel[j].size = WC.sel[j].size === 's' ? 'l' : 's'; wconFoot(); var f = $('[data-wtz="' + t.dataset.wtz + '"]', wcon); if (f) f.focus(); return; }
+    if ((t = e.target.closest('[data-wun]'))) { wconToggle(t.dataset.wun); wconBrowse(); return; }
+    if (e.target.closest('[data-wclear]')) { WC.sel = []; wconBrowse(); return; }
+    if ((t = e.target.closest('[data-wview]'))) { var v = t.dataset.wview; if (v === 'yes') wconUseDefault(); else { WC.confirm = v === 'ask'; $('.wcon__view', wcon).outerHTML = wconDefault(); var fb = $('[data-wview]', wcon); if (fb) fb.focus(); } return; }
+    if ((t = e.target.closest('[data-wback]'))) { var k = t.dataset.wback, bw = shelf[k]; delete shelf[k]; cflip(function () { cb.insertBefore(bw, cb.firstChild); }); csave(); wconBrowse(); note(CNAMES[k][0] + ' added back'); return; }
+    if (e.target.closest('#wconBack')) { wconBrowse(); return; }
+    if (e.target.closest('[data-wgo]')) wconGo();
+  });
+  $('#wconQ').addEventListener('input', function () { WC.q = this.value.trim(); wconBrowse(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && wcon.classList.contains('on')) { e.stopImmediatePropagation(); if (WC.mod) wconBrowse(); else wconClose(); } }, true);
   cAdd.addEventListener('click', function (e) {
     if (e.target === cAdd || e.target.closest('[data-cclose]')) { cAdd.classList.remove('on'); cAdd.setAttribute('aria-hidden', 'true'); return; }
     var rm = e.target.closest('[data-crm]');
@@ -1889,7 +2563,7 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
   function renderNav() {
     qmNav.innerHTML = [['all', 'All modules', '<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>']].concat(QCATS).map(function (c) {
       var n = c[0] === 'all' ? QMODS.length : QMODS.filter(function (m) { return m[3] === c[0]; }).length;
-      return '<button type="button" class="qm__cat" data-qcat="' + c[0] + '" aria-current="' + (qCat === c[0]) + '"><svg class="s" viewBox="0 0 24 24">' + c[2] + '</svg>' + c[1] + '<span>' + n + '</span></button>';
+      return '<button type="button" class="qm__cat" data-qcat="' + c[0] + '" aria-current="' + (qCat === c[0]) + '"><svg class="s" viewBox="0 0 24 24">' + c[2] + '</svg><b class="qm__catl">' + c[1] + '</b><span>' + n + '</span></button>';
     }).join('');
   }
   function renderList() {
@@ -2024,31 +2698,80 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
   for (var i = 0; i < 7; i++) { var d = new Date(start); d.setDate(start.getDate() + i); days += '<button type="button"' + (i === 3 ? ' aria-current="date"' : '') + ' data-toast="' + d.toDateString() + '"><b>' + d.getDate() + '</b>' + d.toLocaleDateString('en-GB', { weekday: 'short' }) + '</button>'; }
   
 
-  /* today: overdue / pending as a timeline */
+  /* today: due today / overdue. The date tile opens a calendar: a past day shows what was completed that day and
+     what from it is still overdue. Past days are sample data, fixed per day. */
   var TODO = [['Deworming', 319, 'Administer', '09:00', 1], ['Vaccinations', 143, 'Administer', '10:30', 1], ['Treatment follow-ups', 27, 'Medical', '11:00', 1], ['Enclosure inspections', 9, 'Housing', '12:00', 1], ['Weight checks', 34, 'Animals', '14:00', 1],
               ['Necropsy reports', 14296, 'Necropsy', '09:30'], ['Microchipping', 20302, 'Animals', '11:30'], ['Sexing', 28532, 'Animals', '13:00'], ['Lab results to review', 41, 'Lab', '15:00'], ['Medication refills', 23, 'Pharmacy', '16:00'], ['Egg checks', 12, 'Eggs', '17:00']];
-  var over = TODO.filter(function (t) { return t[4]; }), pend = TODO.filter(function (t) { return !t[4]; }), tab = 'over', SHOW = 4;
-  $('#nOver').textContent = over.length; $('#nPend').textContent = pend.length;
+  var TODAY = new Date(now.getFullYear(), now.getMonth(), now.getDate()), day = TODAY, tab = 'first', calM = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var same = function (a, b) { return a.getTime() === b.getTime(); };
+  function seeded(key) { var h = 2166136261; for (var k = 0; k < key.length; k++) { h ^= key.charCodeAt(k); h = Math.imul(h, 16777619); } return function (a, b) { h += 0x6D2B79F5; var t = Math.imul(h ^ h >>> 15, h | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return Math.floor(a + (((t ^ t >>> 14) >>> 0) / 4294967296) * (b - a + 1)); }; }
+  /* rows: [name, count, module, time, kind] with kind 'due' | 'over' | 'done' */
+  function lists(d) {
+    if (same(d, TODAY)) return { first: TODO.filter(function (t) { return !t[4]; }).map(function (t) { return [t[0], t[1], t[2], t[3], 'due']; }), over: TODO.filter(function (t) { return t[4]; }).map(function (t) { return [t[0], t[1], t[2], t[3], 'over']; }) };
+    var r = seeded(d.toDateString()), age = Math.round((TODAY - d) / 864e5);
+    var done = TODO.filter(function () { return r(0, 9) > 2; }).map(function (t) { return [t[0], r(4, 60), t[2], t[3], 'done']; });
+    var left = TODO.filter(function (t) { return t[4] && r(0, 9) > (age > 14 ? 6 : 3); }).map(function (t) { return [t[0], r(1, 24), t[2], t[3], 'over']; });
+    return { first: done, over: left };
+  }
+  var L;
+  function fmtDay(d) { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+  function setDay(d) {
+    day = d; L = lists(d); var isToday = same(d, TODAY);
+    $('#tdT').textContent = isToday ? 'Today' : fmtDay(d);
+    $('#tdS').textContent = isToday ? 'What needs doing' : 'Done that day, and still overdue';
+    $('#dMon').textContent = MON[d.getMonth()].toUpperCase(); $('#dDay').textContent = d.getDate();
+    $('#tFirst').textContent = isToday ? 'Due today' : 'Completed';
+    $('#nFirst').textContent = L.first.length; $('#nOver').textContent = L.over.length;
+    tab = 'first'; $$('.ttabs button').forEach(function (x) { x.setAttribute('aria-selected', String(x.dataset.tt === 'first')); });
+    renderTl();
+  }
   function renderTl() {
-    var rows = tab === 'over' ? over : pend, more = rows.length - SHOW;
+    var rows = tab === 'over' ? L.over : L.first, isToday = same(day, TODAY);
     var ICON = { Administer: ['m-administer', '#FA6140'], Medical: ['m-medical', '#006D35'], Housing: ['m-housing', '#0A8A47'], Animals: ['m-species', '#00AFD6'],
                  Necropsy: ['m-mortality', '#1F415B'], Lab: ['m-lab', '#D9A21B'], Pharmacy: ['m-pharmacy', '#00ABAB'], Eggs: ['m-eggs', '#D9A21B'] };
-    $('#tl').innerHTML = rows.map(function (t) {
+    var what = { due: function (t) { return 'due ' + t[3]; }, over: function () { return isToday ? 'overdue' : 'overdue since ' + day.getDate() + ' ' + MON[day.getMonth()]; }, done: function (t) { return 'completed ' + t[3]; } };
+    $('#tl').innerHTML = rows.length ? rows.map(function (t) {
       var ic = ICON[t[2]] || ['m-species', '#006D35'];
-      return '<a class="tl__card' + (t[4] ? ' hot' : '') + '" href="#" data-toast="' + t[2] + ' · ' + t[0] + '">' +
+      return '<a class="tl__card' + (t[4] === 'over' ? ' hot' : t[4] === 'done' ? ' done' : '') + '" href="#" data-toast="' + t[2] + ' · ' + t[0] + '">' +
         '<span class="tl__ic" style="--c:' + ic[1] + '"><span class="ico" style="--i:url(\'https://antz-home-style-2.vercel.app/assets/icon/' + ic[0] + '.svg\')"></span></span>' +
-        '<span class="tl__tx"><b>' + t[0] + '</b><small>' + t[2] + (t[4] ? ' · overdue' : '') + '</small></span><em class="num">' + t[1].toLocaleString('en-US') + '</em></a>';
-    }).join('') + 
-      '';
+        '<span class="tl__tx"><b>' + t[0] + '</b><small>' + t[2] + ' · ' + what[t[4]](t) + '</small></span><em class="num">' + t[1].toLocaleString('en-US') + '</em></a>';
+    }).join('') : '<p class="tl__none">' + (tab === 'over' ? 'Nothing left overdue from this day' : 'Nothing recorded') + '</p>';
   }
   $('.ttabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tt]'); if (!b) return; tab = b.dataset.tt; $$('.ttabs button').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); }); renderTl(); });
-  renderTl();
+
+  /* the calendar: today and earlier can be picked; later days are greyed out */
+  var dcal = $('#dcal'), dBtn = $('#dBtn');
+  function calRender() {
+    var y = calM.getFullYear(), m = calM.getMonth(), first = (new Date(y, m, 1).getDay() + 6) % 7, n = new Date(y, m + 1, 0).getDate(), cells = '';
+    for (var k = 0; k < first; k++) cells += '<span></span>';
+    for (var dd = 1; dd <= n; dd++) {
+      var dt = new Date(y, m, dd), fut = dt > TODAY, sel = same(dt, day), td = same(dt, TODAY);
+      cells += '<button type="button" data-cd="' + dd + '"' + (fut ? ' disabled' : '') + (sel ? ' aria-pressed="true"' : ' aria-pressed="false"') + (td ? ' class="is-today"' : '') + ' aria-label="' + dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (td ? ', today' : '') + '">' + dd + '</button>';
+    }
+    var nextOff = new Date(y, m + 1, 1) > TODAY;
+    dcal.innerHTML = '<div class="dcal__hd"><button type="button" data-cm="-1" aria-label="Previous month"><svg class="s" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button><b>' + calM.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) + '</b><button type="button" data-cm="1" aria-label="Next month"' + (nextOff ? ' disabled' : '') + '><svg class="s" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div>' +
+      '<div class="dcal__wk" aria-hidden="true"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div><div class="dcal__grid">' + cells + '</div>' +
+      '<div class="dcal__ft"><span>Past days show completed and overdue</span><button type="button" data-ctoday>Today</button></div>';
+  }
+  function calOpen(on) { dcal.hidden = !on; dBtn.setAttribute('aria-expanded', String(on)); if (on) { calM = new Date(day.getFullYear(), day.getMonth(), 1); calRender(); var f = $('[aria-pressed="true"]', dcal) || $('[data-cd]', dcal); if (f) f.focus(); } }
+  dBtn.addEventListener('click', function (e) { e.stopPropagation(); calOpen(dcal.hidden); });
+  dcal.addEventListener('click', function (e) {
+    e.stopPropagation(); var b;
+    if ((b = e.target.closest('[data-cm]'))) { calM = new Date(calM.getFullYear(), calM.getMonth() + +b.dataset.cm, 1); calRender(); return; }
+    if ((b = e.target.closest('[data-cd]'))) { setDay(new Date(calM.getFullYear(), calM.getMonth(), +b.dataset.cd)); calOpen(false); dBtn.focus(); return; }
+    if (e.target.closest('[data-ctoday]')) { setDay(TODAY); calOpen(false); dBtn.focus(); }
+  });
+  document.addEventListener('click', function () { if (!dcal.hidden) calOpen(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !dcal.hidden) { calOpen(false); dBtn.focus(); } });
+  setDay(TODAY);
 
   /* notes */
   $('#notes').innerHTML = [['Deep Flank Wound', 'Open Wound · Bleeding · Emerson Vance', '03 Sep', '#FA6140'], ['Metal Work', 'Rust and Corrosion · Kai Vance', '02 Sep', '#F0A020'], ['Coat Condition', 'Grooming · Routine Check · Jordan Brenner', '30 Aug', '#00ABAB']]
     .map(function (n) { return '<a class="note" href="#" data-toast="' + n[0] + '" style="--pin:' + n[3] + '"><i></i><b>' + n[0] + '</b><time>' + n[2] + '</time><small>' + n[1] + '</small></a>'; }).join('');
 
-  setTimeout(function () { $$('.sb__col i').forEach(function (i) { i.style.height = i.dataset.h + '%'; }); paint(); }, reduce ? 0 : 400);
+  function growBars() { setTimeout(function () { $$('.sb__col i').forEach(function (i) { i.style.height = i.dataset.h + '%'; }); paint(); }, reduce ? 0 : 350); }
+  if (revealed) growBars(); else document.addEventListener('antz-ready', growBars, { once: true });
 
   /* announcements carousel */
   var ANN = [
@@ -2125,7 +2848,7 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
   });
   mg.addEventListener('pointermove', function (e) {
     var d = md; if (!d || e.pointerId !== d.id) return;
-    if (!d.live) { if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return; d.live = true; var g = d.el.cloneNode(true); g.classList.add('cghost'); g.style.width = d.w + 'px'; g.style.height = d.h + 'px'; document.body.appendChild(g); d.g = g; d.el.classList.add('ph'); document.body.classList.add('dragging'); try { mg.setPointerCapture(d.id); } catch (x) {} }
+    if (!d.live) { if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return; d.live = true; var g = d.el.cloneNode(true); if (d.el.shadowRoot) xShadow(g, d.el.dataset.mod, d.el.dataset.size, { fill: 1, still: 1 }); g.classList.remove('is-detail'); g.classList.add('cghost'); g.style.width = d.w + 'px'; g.style.height = d.h + 'px'; document.body.appendChild(g); d.g = g; d.el.classList.add('ph'); document.body.classList.add('dragging'); try { mg.setPointerCapture(d.id); } catch (x) {} }
     d.g.style.left = (e.clientX - d.ox) + 'px'; d.g.style.top = (e.clientY - d.oy) + 'px';
     var t = document.elementFromPoint(e.clientX, e.clientY); t = t && t.closest('#mgrid .mc');
     if (t && t !== d.el && t !== d.last) { d.last = t; var l = $$('.mc', mg), a = l.indexOf(d.el), b = l.indexOf(t); mg.insertBefore(d.el, a < b ? t.nextSibling : t); }
@@ -2196,44 +2919,110 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
 })();
 </script>
 <script>
-/* Notes card: write, pick a type and an animal, save. Kept under 'antz-notes-v1', the key the ANTZ dashboard uses. */
+/* Notes card: a "New note" button that opens the full note form (as in the ANTZ app: type, notes, record date,
+   notify members, entity, attachments, priority). Kept under 'antz-notes-v1', the key the ANTZ dashboard uses.
+   Attachments stay in this browser as names only; nothing is uploaded. */
 (function () {
-  var KEY = 'antz-notes-v1', MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var KEY = 'antz-notes-v1', MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], MAXB = 32 * 1024 * 1024;
   var DOT = { Observation: '#00ABAB', Medical: '#FA6140', Behaviour: '#7B6CF0', Feeding: '#00A85A', General: '#A9B4AF' };
-  var ANIMALS = [['AAID:166120', 'Spotted Ember'], ['AAID:190317', 'Slate Pangolin'], ['AAID:143944', 'Glacial Egret'], ['AAID:172277', 'Russet Whipsnake'], ['AAID:169095', 'Marbled Phantom Saki'], ['AAID:158802', 'Amber Ridge Gaur'], ['AAID:181455', 'Dusk Myna']];
+  var ENT = {
+    animal: [['AAID:166120', 'Spotted Ember'], ['AAID:190317', 'Slate Pangolin'], ['AAID:143944', 'Glacial Egret'], ['AAID:172277', 'Russet Whipsnake'], ['AAID:169095', 'Marbled Phantom Saki'], ['AAID:158802', 'Amber Ridge Gaur'], ['AAID:181455', 'Dusk Myna']],
+    enclosure: [['E4', 'Big Cat House · E4'], ['AV2', 'Aviary 2'], ['R9', 'Reptile House · R9'], ['P2', 'Primate Island · P2'], ['N1', 'Nocturnal House · N1'], ['W3', 'Wetlands · W3']],
+    section: [['carnivore', 'Carnivore Section'], ['primates', 'Primates'], ['aviary', 'Aviary'], ['reptiles', 'Reptiles'], ['herbivores', 'Herbivores']]
+  };
+  var KIND = { animal: 'Animal', enclosure: 'Enclosure', section: 'Section' };
+  var PRI = [['Low', '!'], ['Moderate', '!!'], ['High', '!!!'], ['Critical', '<span class="nn__ic" aria-hidden="true">local_fire_department</span>']];
   var $ = function (id) { return document.getElementById(id); };
-  var text = $('qnText'), type = $('qnType'), animal = $('qnAnimal'), send = $('qnSend');
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var load = function () { try { var v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
-  var save = function (list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* storage blocked */ } };
-  animal.innerHTML += ANIMALS.map(function (a) { return '<option value="' + a[0] + '">' + esc(a[1]) + '</option>'; }).join('');
+  var store = function (list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* storage blocked */ } };
+  var nn = $('nn'), form = $('nnForm'), text = $('nnText'), S;
+  function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fresh() { S = { type: '', kind: 'animal', ent: null, notify: false, files: [], pri: 'Low' }; }
+  function size(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
+  /* ---- latest notes under the button ---- */
   function when(n) { var d = new Date(n.ts); return d.toDateString() === new Date().toDateString() ? 'Today ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : n.d; }
+  function entName(n) { if (n.entity) return n.entity.name; var a = ENT.animal.filter(function (x) { return x[0] === n.animal; })[0]; return a ? a[1] : ''; }
   function render() {
-    var mine = load().slice().sort(function (a, b) { return b.ts - a.ts; }), today = mine.filter(function (n) { return new Date(n.ts).toDateString() === new Date().toDateString(); }).length;
-    $('qnSub').textContent = today ? today + ' written today' : '';
+    var mine = load().slice().sort(function (a, b) { return b.ts - a.ts; }), n0 = mine.filter(function (n) { return new Date(n.ts).toDateString() === new Date().toDateString(); }).length;
+    $('qnSub').textContent = n0 ? n0 + ' written today' : '';
     $('qnLast').innerHTML = mine.length ? mine.slice(0, 2).map(function (n) {
-      var a = ANIMALS.filter(function (x) { return x[0] === n.animal; })[0];
-      return '<div class="qn__row"><i class="qn__dot" style="background:' + (DOT[n.type] || DOT.General) + '"></i><span><b>' + esc(n.t) + '</b><small>' + esc(n.type + (a ? ' · ' + a[1] : '')) + '</small></span><time>' + esc(when(n)) + '</time></div>';
-    }).join('') : '<p class="qn__empty">Notes you write here show up below</p>';
+      var e = entName(n);
+      return '<div class="qn__row"><i class="qn__dot" style="background:' + (DOT[n.type] || DOT.General) + '"></i><span><b>' + esc(n.t) + '</b><small>' + esc((n.type || 'Note') + (e ? ' · ' + e : '') + (n.priority && n.priority !== 'Low' ? ' · ' + n.priority : '')) + '</small></span><time>' + esc(when(n)) + '</time></div>';
+    }).join('') : '<p class="qn__empty">Notes you write show up here</p>';
   }
-  function grow() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 104) + 'px'; }
-  text.addEventListener('input', function () { send.disabled = !text.value.trim(); grow(); });
-  text.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('qnForm').requestSubmit(); } });
-  type.addEventListener('change', function () { $('qnDot').style.background = DOT[type.value]; });
-  animal.addEventListener('change', function () { $('qnAnimalPick').classList.toggle('is-set', !!animal.value); });
-  $('qnForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var v = text.value.trim(); if (!v) return;
-    var ts = Date.now(), d = new Date(ts), first = v.split(/\n/)[0];
-    var list = load();
-    list.push({ t: first.length > 70 ? first.slice(0, 67) + '…' : first, text: v, tags: [type.value], by: 'Prajwal Shetty', d: String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()], n: ts, ts: ts, coll: 'Quick notes', type: type.value, animal: animal.value, mine: true });
-    save(list);
-    text.value = ''; send.disabled = true; grow(); animal.value = ''; $('qnAnimalPick').classList.remove('is-set');
-    render();
-    var t = $('toast'); if (t) { t.textContent = 'Note saved'; t.classList.add('on'); setTimeout(function () { t.classList.remove('on'); }, 1600); }
+
+  /* ---- the form ---- */
+  $('nnPri').innerHTML = PRI.map(function (p, i) { return '<label class="nn__pr"><input type="radio" name="nnPri" value="' + p[0] + '"' + (i ? '' : ' checked') + '><i>' + p[1] + '</i><span>' + p[0] + '</span></label>'; }).join('');
+  $('nnTypes').innerHTML = '<div class="nn__chips">' + Object.keys(DOT).map(function (t) { return '<button type="button" class="nn__chip" role="radio" aria-checked="false" data-nn-type="' + t + '"><i class="nn__dot" style="background:' + DOT[t] + '"></i>' + t + '</button>'; }).join('') + '</div>';
+  function pop(btn, box, on) { box.hidden = !on; btn.setAttribute('aria-expanded', String(on)); }
+  function showType() {
+    $('nnTypeVal').innerHTML = S.type ? '<i class="nn__dot" style="background:' + DOT[S.type] + '"></i>' + esc(S.type) : '<span class="nn__ph">Note type</span>';
+    Array.prototype.forEach.call($('nnTypes').querySelectorAll('[data-nn-type]'), function (b) { b.setAttribute('aria-checked', String(b.dataset.nnType === S.type)); });
+  }
+  function showEnt() {
+    $('nnEntVal').innerHTML = S.ent ? '<span>' + esc(KIND[S.ent.kind] + ' · ' + S.ent.name) + '</span>' : '<span class="nn__ph">Select entity <em>*</em></span>';
+    Array.prototype.forEach.call(document.querySelectorAll('[data-nn-kind]'), function (b) { b.setAttribute('aria-selected', String(b.dataset.nnKind === S.kind)); });
+    var q = $('nnEntQ').value.trim().toLowerCase(), list = ENT[S.kind].filter(function (x) { return !q || (x[1] + ' ' + x[0]).toLowerCase().indexOf(q) > -1; });
+    $('nnEntList').innerHTML = list.length ? list.map(function (x) {
+      var on = S.ent && S.ent.kind === S.kind && S.ent.id === x[0];
+      return '<button type="button" class="nn__opt" role="radio" aria-checked="' + !!on + '" data-nn-ent="' + esc(x[0]) + '">' + esc(x[1]) + (S.kind === 'animal' ? '<small>' + esc(x[0]) + '</small>' : '') + '</button>';
+    }).join('') : '<p class="nn__none">Nothing matches</p>';
+  }
+  function showFiles() {
+    $('nnFileList').innerHTML = S.files.map(function (f, i) { return '<li><span>' + esc(f.name) + '</span><small>' + size(f.size) + '</small><button type="button" data-nn-rmfile="' + i + '" aria-label="Remove ' + esc(f.name) + '"><span class="nn__ic" aria-hidden="true">close</span></button></li>'; }).join('');
+  }
+  function check() { $('nnSave').disabled = !(text.value.trim() && S.ent); }
+  function reset() {
+    fresh(); form.reset(); $('nnDate').value = today(); $('nnEntQ').value = ''; $('nnErr').textContent = '';
+    $('nnNotify').setAttribute('aria-checked', 'false'); pop($('nnTypeBtn'), $('nnTypes'), false); pop($('nnEntBtn'), $('nnEnt'), false);
+    showType(); showEnt(); showFiles(); check();
+  }
+  function open(on) {
+    nn.classList.toggle('is-open', on); form.hidden = !on; $('nnOpen').setAttribute('aria-expanded', String(on));
+    if (on) { setTimeout(function () { $('nnTypeBtn').focus(); }, 30); } else { $('nnOpen').focus(); }
+  }
+  function addFiles(list) {
+    var bad = [], ok = /\.(jpe?g|png|pdf|mp4|mp3)$/i;
+    Array.prototype.forEach.call(list, function (f) { if (!ok.test(f.name)) bad.push(f.name + ' (type not supported)'); else if (f.size > MAXB) bad.push(f.name + ' (over 32 MB)'); else S.files.push({ name: f.name, size: f.size }); });
+    $('nnErr').textContent = bad.length ? 'Not added: ' + bad.join(', ') : '';
+    showFiles();
+  }
+
+  $('nnOpen').addEventListener('click', function () { open(true); });
+  $('nnBack').addEventListener('click', function () { open(false); });
+  $('nnCancel').addEventListener('click', function () { reset(); open(false); });
+  $('nnTypeBtn').addEventListener('click', function () { pop(this, $('nnTypes'), $('nnTypes').hidden); });
+  $('nnEntBtn').addEventListener('click', function () { var on = $('nnEnt').hidden; pop(this, $('nnEnt'), on); if (on) setTimeout(function () { $('nnEntQ').focus(); }, 20); });
+  $('nnEntQ').addEventListener('input', showEnt);
+  $('nnNotify').addEventListener('click', function () { S.notify = !S.notify; this.setAttribute('aria-checked', String(S.notify)); });
+  $('nnFiles').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+  var up = form.querySelector('.nn__up');
+  up.addEventListener('dragover', function (e) { e.preventDefault(); up.classList.add('is-over'); });
+  up.addEventListener('dragleave', function () { up.classList.remove('is-over'); });
+  up.addEventListener('drop', function (e) { e.preventDefault(); up.classList.remove('is-over'); addFiles(e.dataTransfer.files); });
+  form.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-nn-type]'); if (t) { S.type = t.dataset.nnType; showType(); pop($('nnTypeBtn'), $('nnTypes'), false); $('nnTypeBtn').focus(); return; }
+    t = e.target.closest('[data-nn-kind]'); if (t) { S.kind = t.dataset.nnKind; $('nnEntQ').value = ''; showEnt(); return; }
+    t = e.target.closest('[data-nn-ent]'); if (t) { var x = ENT[S.kind].filter(function (y) { return y[0] === t.dataset.nnEnt; })[0]; S.ent = { kind: S.kind, id: x[0], name: x[1] }; showEnt(); pop($('nnEntBtn'), $('nnEnt'), false); $('nnEntBtn').focus(); check(); return; }
+    t = e.target.closest('[data-nn-rmfile]'); if (t) { S.files.splice(+t.dataset.nnRmfile, 1); showFiles(); }
   });
-  $('qnDot').style.background = DOT[type.value];
-  render();
+  form.addEventListener('change', function (e) { if (e.target.name === 'nnPri') S.pri = e.target.value; });
+  text.addEventListener('input', check);
+  form.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); if (!$('nnTypes').hidden) pop($('nnTypeBtn'), $('nnTypes'), false); else if (!$('nnEnt').hidden) pop($('nnEntBtn'), $('nnEnt'), false); else open(false); } });
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = text.value.trim();
+    if (!v || !S.ent) { $('nnErr').textContent = !v ? 'Write the note first.' : 'Select the animal, enclosure or section this note is about.'; return; }
+    var ts = Date.now(), rd = $('nnDate').value ? new Date($('nnDate').value + 'T12:00') : new Date(ts), first = v.split(/\n/)[0], type = S.type || 'General';
+    var list = load();
+    list.push({ t: first.length > 70 ? first.slice(0, 67) + '…' : first, text: v, tags: [type], by: 'Prajwal Shetty', d: String(rd.getDate()).padStart(2, '0') + ' ' + MONTHS[rd.getMonth()], n: ts, ts: ts, coll: 'Quick notes',
+      type: type, animal: S.ent.kind === 'animal' ? S.ent.id : '', entity: S.ent, date: $('nnDate').value, notify: S.notify, priority: S.pri, attachments: S.files.slice(), mine: true });
+    store(list); reset(); open(false); render();
+    var tt = $('toast'); if (tt) { tt.textContent = 'Note saved' + (list[list.length - 1].notify ? ' · members notified' : ''); tt.classList.add('on'); setTimeout(function () { tt.classList.remove('on'); }, 1600); }
+  });
+  reset(); render();
 })();
 </script>
 <script>
@@ -2245,12 +3034,28 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
   var app = function (id) { return apps.filter(function (a) { return a.id === id; })[0]; };
   var read = function (k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   var pins = (read('antz-pins') || home.pins || []).filter(app).slice(0, MAX);
+  /* each module's notification count: the module's own badge in config.js, else what is waiting in data.js (all sites).
+     Red is overdue or urgent; green is unread or waiting. Nothing shows at zero. */
+  var DD = window.ANTZ_DATA, M = DD && DD.site ? DD.site('all') : null, NOTE_N = (CFG.data && CFG.data.notes || []).filter(function (n) { return /high|critical/i.test(n.priority || ''); }).length;
+  var LIVE = M ? {
+    animals: [M.overdue.weights, 'weight checks overdue', 'red'], medical: [M.overdue.followups, 'follow-ups due', 'red'],
+    administer: [M.vacc.overdue + M.deworm.overdue, 'doses overdue', 'red'], housing: [M.overdue.inspections, 'inspections overdue', 'red'],
+    lab: [M.pending.lab + M.lab.flagged, 'results to review', 'green'], eggs: [M.pending.eggs, 'egg checks due', 'green'],
+    necropsy: [M.pending.necropsy, 'necropsies pending', 'green'], compliance: [M.licences - M.licencesCurrent, 'licences overdue', 'red'],
+    mortality: [M.critical, 'critical cases', 'red'], audit: [Math.max(1, Math.round(M.sections / 12)), 'audits due this week', 'green'],
+    notes: [NOTE_N || 3, 'notes need your attention', 'green'], collections: [2, 'species records to review', 'green'], focus: [4, 'updates on saved items', 'green']
+  } : {};
+  function count(a) {
+    if (a.badge) return [a.badge, a.badgeLabel || 'new', /pending|open/.test(a.badgeLabel || '') ? 'red' : 'green'];
+    return LIVE[a.id] && LIVE[a.id][0] > 0 ? LIVE[a.id] : null;
+  }
+  function badge(a) { var c = count(a); return c ? '<span class="asb__bd asb__bd--' + c[2] + '" aria-label="' + c[0] + ' ' + esc(c[1]) + '">' + (c[0] > 99 ? '99+' : c[0]) + '</span>' : ''; }
   function render() {
     $('sbPins').innerHTML = pins.map(function (id) {
       var a = app(id);
-      return '<a href="index.html" class="asb__item" title="' + esc(a.name) + '"><span class="asb__mic" style="--c:' + esc(a.colour) + '"><span class="asb__ico" aria-hidden="true">' + esc(a.icon) + '</span></span><span class="asb__lbl">' + esc(a.name) + '</span>' +
+      return '<a href="index.html" class="asb__item" data-pin="' + a.id + '" draggable="false" title="' + esc(a.name) + ' · drag to reorder (Alt + ↑/↓)"><span class="asb__mic" style="--c:' + esc(a.colour) + '"><span class="asb__ico" aria-hidden="true">' + esc(a.icon) + '</span></span><span class="asb__lbl">' + esc(a.name) + '</span>' + badge(a) +
         '<span class="asb__off" role="button" tabindex="0" data-sb-unpin="' + a.id + '" aria-label="Unpin ' + esc(a.name) + '"><span class="asb__ico" aria-hidden="true">keep_off</span></span></a>';
-    }).join('') + (pins.length < MAX ? '<button type="button" class="asb__item asb__add" data-sb-mods title="Pin a module"><span class="asb__mic"><span class="asb__ico" aria-hidden="true">add</span></span><span class="asb__lbl">Pin a module</span></button>' : '');
+    }).join('') + (pins.length < MAX ? '<button type="button" class="asb__item asb__add" data-sb-pick title="Pin a module" aria-haspopup="dialog"><span class="asb__mic"><span class="asb__ico" aria-hidden="true">add</span></span><span class="asb__lbl">Pin a module</span></button>' : '');
     $('sbPinN').textContent = pins.length + ' of ' + MAX;
     $('sbModN').textContent = apps.length;
   }
@@ -2264,9 +3069,86 @@ body.editing .cboard > .mw::after { box-shadow: inset 0 0 0 2px rgba(82, 249, 14
   document.addEventListener('click', function (e) {
     var un = e.target.closest('[data-sb-unpin]');
     if (un) { e.preventDefault(); pins = pins.filter(function (x) { return x !== un.dataset.sbUnpin; }); try { localStorage.setItem('antz-pins', JSON.stringify(pins)); } catch (er) { /* storage blocked */ } render(); return; }
+    if (e.target.closest('[data-sb-pick]')) { e.preventDefault(); pickOpen(); return; }
+    var pt = e.target.closest('[data-pin-t]');
+    if (pt) { togglePin(pt.dataset.pinT); return; }
+    if (e.target.closest('[data-pin-close]') || e.target === $('pinPick')) { pickClose(); return; }
     if (e.target.closest('[data-sb-mods]')) { e.preventDefault(); var b = $('modBtn'); if (b) { b.scrollIntoView({ block: 'nearest' }); setTimeout(function () { b.click(); }, 0); } return; }
     if (e.target.closest('#sbToggle')) rail(!document.body.classList.contains('asb-rail'), true);
   });
+  /* drag a pinned module to reorder it; Alt + ↑/↓ moves the focused one. The order saves to 'antz-pins' */
+  var sb = $('sbPins'), dr = null, noClick = false;
+  function savePins() { try { localStorage.setItem('antz-pins', JSON.stringify(pins)); } catch (er) { /* storage blocked */ } }
+  function flip(change) {
+    var items = Array.prototype.slice.call(sb.querySelectorAll('[data-pin]')), before = new Map();
+    items.forEach(function (el) { before.set(el, el.getBoundingClientRect().top); }); change();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    items.forEach(function (el) { if (dr && el === dr.el) return; var dy = before.get(el) - el.getBoundingClientRect().top; if (!dy) return;
+      el.style.transition = 'none'; el.style.transform = 'translateY(' + dy + 'px)'; requestAnimationFrame(function () { requestAnimationFrame(function () { el.style.transition = 'transform .2s cubic-bezier(.2,.7,.2,1)'; el.style.transform = ''; }); }); });
+  }
+  sb.addEventListener('dragstart', function (e) { e.preventDefault(); });
+  sb.addEventListener('pointerdown', function (e) {
+    var it = e.target.closest('[data-pin]'); if (!it || e.button !== 0 || e.target.closest('[data-sb-unpin]')) return;
+    dr = { el: it, id: e.pointerId, y: e.clientY, live: false };
+  });
+  sb.addEventListener('pointermove', function (e) {
+    if (!dr || e.pointerId !== dr.id) return;
+    if (!dr.live) { if (Math.abs(e.clientY - dr.y) < 5) return; dr.live = true; dr.el.classList.add('is-drag'); sb.classList.add('is-sorting'); try { sb.setPointerCapture(dr.id); } catch (x) { /* older browsers */ } }
+    e.preventDefault();
+    var over = Array.prototype.slice.call(sb.querySelectorAll('[data-pin]')).filter(function (el) { if (el === dr.el) return false; var r = el.getBoundingClientRect(); return e.clientY >= r.top && e.clientY <= r.bottom; })[0];
+    if (!over) return;
+    var r = over.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2, ref = after ? over.nextSibling : over;
+    if (ref === dr.el || ref === dr.el.nextSibling) return;
+    flip(function () { sb.insertBefore(dr.el, ref); });
+  });
+  function dragEnd() {
+    var d = dr; dr = null; if (!d || !d.live) return;
+    d.el.classList.remove('is-drag'); sb.classList.remove('is-sorting'); noClick = true; setTimeout(function () { noClick = false; }, 0);
+    var order = Array.prototype.slice.call(sb.querySelectorAll('[data-pin]')).map(function (el) { return el.dataset.pin; });
+    if (order.join() !== pins.join()) { pins = order; savePins(); }
+  }
+  sb.addEventListener('pointerup', dragEnd); sb.addEventListener('pointercancel', dragEnd);
+  sb.addEventListener('click', function (e) { if (noClick) { e.preventDefault(); e.stopPropagation(); } }, true);
+  sb.addEventListener('keydown', function (e) {
+    var it = e.target.closest('[data-pin]'); if (!it || !e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault(); var i = pins.indexOf(it.dataset.pin), j = i + (e.key === 'ArrowUp' ? -1 : 1); if (j < 0 || j >= pins.length) return;
+    pins.splice(j, 0, pins.splice(i, 1)[0]); savePins();
+    flip(function () { render(); }); var f = sb.querySelector('[data-pin="' + pins[j] + '"]'); if (f) f.focus();
+  });
+
+  /* pin picker: every module with a pin switch; pins save to 'antz-pins' (the same list every ANTZ page reads) */
+  var pk = document.createElement('div'); pk.className = 'pinpk'; pk.id = 'pinPick'; pk.setAttribute('aria-hidden', 'true');
+  pk.innerHTML = '<div class="pinpk__p" role="dialog" aria-modal="true" aria-labelledby="pinT"><div class="pinpk__hd"><div><b id="pinT">Pin modules to your sidebar</b><small id="pinN"></small></div>' +
+    '<button type="button" class="pinpk__x" data-pin-close aria-label="Close"><span class="asb__ico" aria-hidden="true">close</span></button></div>' +
+    '<label class="pinpk__q"><span class="asb__ico" aria-hidden="true">search</span><input id="pinQ" type="search" placeholder="Find a module" aria-label="Find a module" autocomplete="off"></label>' +
+    '<div class="pinpk__list" id="pinList"></div><div class="pinpk__ft"><button type="button" class="pinpk__done" data-pin-close>Done</button></div></div>';
+  document.body.appendChild(pk);
+  var pq = '', ORDERG = ['Animals', 'Medical & care', 'Operations', 'Team', 'Records', 'Admin'];
+  function pickRender() {
+    var q = pq.toLowerCase(), list = apps.filter(function (a) { return !q || (a.name + ' ' + (a.sub || '') + ' ' + (a.group || '')).toLowerCase().indexOf(q) > -1; });
+    var groups = {}; list.forEach(function (a) { (groups[a.group || 'Other'] = groups[a.group || 'Other'] || []).push(a); });
+    var keys = Object.keys(groups).sort(function (x, y) { return (ORDERG.indexOf(x) + 1 || 99) - (ORDERG.indexOf(y) + 1 || 99); });
+    $('pinList').innerHTML = keys.length ? keys.map(function (g) {
+      return '<div class="pinpk__g">' + esc(g) + '</div>' + groups[g].map(function (a) {
+        var on = pins.indexOf(a.id) > -1, full = !on && pins.length >= MAX;
+        return '<button type="button" class="pinpk__row" role="switch" aria-checked="' + on + '" data-pin-t="' + a.id + '"' + (full ? ' aria-disabled="true"' : '') + '>' +
+          '<span class="asb__mic" style="--c:' + esc(a.colour) + '"><span class="asb__ico" aria-hidden="true">' + esc(a.icon) + '</span></span>' +
+          '<span class="pinpk__t"><b>' + esc(a.name) + '</b><small>' + esc(a.sub || '') + '</small></span><span class="pinpk__sw" aria-hidden="true"><span class="asb__ico">' + (on ? 'keep' : 'add') + '</span>' + (on ? 'Pinned' : 'Pin') + '</span></button>';
+      }).join('');
+    }).join('') : '<p class="pinpk__none">No module matches “' + esc(pq) + '”</p>';
+    $('pinN').textContent = pins.length + ' of ' + MAX + ' pinned' + (pins.length >= MAX ? ' · unpin one to add another' : '');
+  }
+  function togglePin(id) {
+    var i = pins.indexOf(id);
+    if (i > -1) pins.splice(i, 1); else if (pins.length < MAX) pins.push(id); else return;
+    try { localStorage.setItem('antz-pins', JSON.stringify(pins)); } catch (er) { /* storage blocked */ }
+    render(); pickRender();
+    var b = document.querySelector('[data-pin-t="' + id + '"]'); if (b) b.focus();
+  }
+  function pickOpen() { pq = ''; $('pinQ').value = ''; pickRender(); pk.classList.add('on'); pk.setAttribute('aria-hidden', 'false'); setTimeout(function () { $('pinQ').focus(); }, 50); }
+  function pickClose() { pk.classList.remove('on'); pk.setAttribute('aria-hidden', 'true'); var a = document.querySelector('[data-sb-pick]'); if (a) a.focus(); }
+  $('pinQ').addEventListener('input', function () { pq = this.value.trim(); pickRender(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pk.classList.contains('on')) { e.stopImmediatePropagation(); pickClose(); } }, true);
   render();
   rail(read('antz-side') === 'rail' || localStorage.getItem('antz-side') === 'rail', false);
 })();
