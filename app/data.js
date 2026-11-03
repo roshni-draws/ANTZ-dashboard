@@ -249,6 +249,9 @@
       overdue: [['Deworming', m.overdue.deworm, 'administer'], ['Vaccinations', m.overdue.vacc, 'administer'], ['Weight checks', m.overdue.weights, 'animals'],
         ['Treatment follow-ups', m.overdue.followups, 'medical'], ['Enclosure inspections', m.overdue.inspections, 'housing']].filter(function (r) { return r[1] > 0; }),
       pending: [['Necropsy reports', m.pending.necropsy, 'necropsy'], ['Lab results to review', m.pending.lab, 'lab'], ['Transfer approvals', m.pending.approvals, 'approvals'], ['Egg checks', m.pending.eggs, 'eggs']].filter(function (r) { return r[1] > 0; }),
+      /* due today: a share of this week's due doses, today's hospital follow-ups and the feeds still to do */
+      today: [['Vaccinations', Math.ceil(m.vacc.pending / 5), 'administer'], ['Deworming', Math.ceil(m.deworm.pending / 5), 'administer'],
+        ['Treatment follow-ups', m.hospital, 'medical'], ['Feeds still to do', Math.round(m.feedsToday * 0.06), 'diet']].filter(function (r) { return r[1] > 0; }),
       total: m.overdueTotal
     };
   }

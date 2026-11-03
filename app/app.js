@@ -15,6 +15,8 @@
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var ui = $('#ui');
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  /* animal IDs (PL-014) render as small mono tags: the one signature detail */
+  var aid = function (s) { return esc(s).replace(/\b[A-Z]{2}-\d{3}\b/g, '<span class="aid">$&</span>'); };
   /* short UI icon names → Material Symbols; any other name is used as-is */
   var SYM = { note: 'sticky_note_2', paw: 'pets', mega: 'campaign', star: 'bookmarks', help: 'support_agent', pin: 'push_pin', heart: 'favorite', bell: 'notifications', plus: 'add', back: 'chevron_left', right: 'chevron_right', left: 'chevron_left', x: 'close', more: 'more_horiz', clip: 'attach_file', down: 'expand_more', warn: 'warning', scan: 'qr_code_scanner', grid: 'widgets' };
   var icon = function (n, cls) { return '<span class="material-symbols-outlined ico ' + (cls == null ? 'ico--sm' : cls) + '" aria-hidden="true">' + (SYM[n] || n) + '</span>'; };
@@ -63,7 +65,7 @@
   /* ================= HOME STATE ================= */
   /* layout v4: one home page, the Command Centre dashboard (main area + right column).
      A v3 layout (several pages) is migrated once: its page 1 is kept, pages 2+ are dropped. */
-  var PIN_KEY = 'antz-pins', LAYOUT_KEY = 'antz-layout-v4', OLD_LAYOUT_KEY = 'antz-layout-v3', SITE_KEY = 'antz-site', HINT_KEY = 'antz-site-hint', SIDE_KEY = 'antz-side';
+  var PIN_KEY = 'antz-pins', LAYOUT_KEY = 'antz-layout-v5', OLD_LAYOUT_KEY = 'antz-layout-v3', SITE_KEY = 'antz-site', HINT_KEY = 'antz-site-hint', SIDE_KEY = 'antz-side';
   var MAX_PINS = CFG.home.maxPins || 10;
   /* pins live in the sidebar; config.home.pins (older configs: home.dock); a saved antz-pins list wins */
   var pinned = (recall(PIN_KEY) || CFG.home.pins || CFG.home.dock || []).filter(app).slice(0, MAX_PINS);
@@ -106,7 +108,7 @@
     action: { name: 'Quick action', def: 'S', desc: 'A module shortcut with its pending count.' },
     activity: { name: 'Recent activity', def: 'XL', open: 'reports', desc: 'The latest records across modules, with status.' },
     planning: { name: 'Planning', def: 'L', open: 'administer', desc: 'Progress towards this week’s targets.' },
-    attention: { name: 'Today', def: 'L', open: 'administer', desc: 'What needs doing today: overdue and pending work, by module.' },
+    attention: { name: 'Today', def: 'L', open: 'administer', desc: 'What needs doing today: pending work and what is due today, by module.' },
     sites: { name: 'Sites', def: 'L', desc: 'Every site with its animals and audit score. Pick one to re-scope the dashboard.' },
     team: { name: 'On duty', def: 'M', open: 'users', desc: 'Who is working today.' },
     helpcard: { name: 'Need help?', def: 'S', open: 'help', desc: 'A shortcut to the Help Desk.' }
@@ -200,7 +202,7 @@
     return items.length ? items : layoutFromConfig();
   }
   var LAYOUT = loadLayout();
-  function saveLayout() { store(LAYOUT_KEY, { v: 4, items: LAYOUT }); try { localStorage.removeItem(OLD_LAYOUT_KEY); } catch (e) { /* storage blocked */ } savePins(); }
+  function saveLayout() { store(LAYOUT_KEY, { v: 5, items: LAYOUT }); try { localStorage.removeItem(OLD_LAYOUT_KEY); } catch (e) { /* storage blocked */ } savePins(); }
   function snapshot() { return JSON.stringify({ items: LAYOUT, pinned: pinned }); }
   function restore(snap) { var o = JSON.parse(snap); LAYOUT = o.items; pinned = o.pinned; saveLayout(); renderHome(); }
   var uidN = 0;
@@ -368,7 +370,7 @@
       return chartWrap('donut', summary, '<span class="cx__ring"><svg viewBox="0 0 42 42" aria-hidden="true"><circle class="cx__track" cx="21" cy="21" r="' + r + '"/>' + arcs + '</svg><span class="cx__center"><b>' + esc(c.center) + '</b></span></span>' + leg);
     },
     hbar: function (c, size) {
-      var rows = size === 'L' ? c.bars : c.bars.slice(0, size === 'S' ? 3 : 5);
+      var rows = size === 'L' ? c.bars : c.bars.slice(0, 3);
       var mx = c.max || niceMax(Math.max.apply(null, c.bars.map(function (b) { return b[1]; })));
       var html = rows.map(function (b) {
         var warn = c.warnBelow != null && b[1] < c.warnBelow;
@@ -429,7 +431,7 @@
     return spec ? (CHARTS[type] || CHARTS.columns)(spec, size) : '';
   }
 
-  function kgrid(list) { return '<span class="kgrid">' + list.map(function (x) { return '<span><b>' + esc(x[0]) + '</b><small>' + esc(x[1]) + '</small></span>'; }).join('') + '</span>'; }
+  function kgrid(list) { return '<span class="kgrid">' + list.map(function (x) { return '<span><b>' + aid(x[0]) + '</b><small>' + esc(x[1]) + '</small></span>'; }).join('') + '</span>'; }
   /* stats widget: numbers for the selected site from data.js, falling back to module.stats in config */
   function statsBody(id, size) {
     var a = app(id), s = (DATA && DATA.moduleStats(id, S.site)) || a.stats;
@@ -442,7 +444,7 @@
     }
     if (size === 'M') return hd(id) + kgrid(s.m.slice(0, 3)) + chartFor(a, s.c, 'M');
     return hd(id) + kgrid(s.m.slice(0, 3)) + '<span class="chart-cap">' + esc(s.c.cap) + '</span>' + chartFor(a, s.c, 'L') +
-      '<span class="wlist">' + s.l.slice(0, 3).map(function (x) { return '<span><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></span>'; }).join('') + '</span>';
+      '<span class="wlist">' + s.l.slice(0, 3).map(function (x) { return '<span><span>' + aid(x[0]) + '</span><b>' + esc(x[1]) + '</b></span>'; }).join('') + '</span>';
   }
   /* ---- widget renderers: one per widget type, each returns the inner HTML for a size (S / M / L).
      A module uses WIDGETS[module.widget], or WIDGETS.stats (driven by module.stats) by default. ---- */
@@ -484,31 +486,30 @@
       return hd(type) + '<small>2 open · 1 in progress</small>' + tk(5) + '<span class="tag">+ Raise a ticket</span>';
     },
     stats: statsBody,
-    /* Today: what needs doing. A date tile, an Overdue / Pending switch (saved with the layout as it.tab)
+    /* Today: what needs doing. A date tile, a Pending / Due today switch (saved with the layout as it.tab)
        and one tinted card per task; each card opens its module. */
     attention: function (type, size, it) {
       if (!DATA) return '';
       it = it || {};
       size = size === 'XL' ? 'L' : size === 'W' ? 'M' : size;
-      var at = DATA.attention(S.site), tab = it.tab === 'pend' ? 'pend' : 'over';
+      var at = DATA.attention(S.site), tab = it.tab === 'today' ? 'today' : 'pend';
       var dm = /(\d{1,2})\s+([A-Za-z]{3})/.exec(CFG.user.date || '') || [0, new Date().getDate(), new Date().toLocaleString('en', { month: 'short' })];
       var head = '<span class="att__hd"><span class="att__ttl"><b>Today</b><small>What needs doing</small></span>' +
-        '<span class="att__date" aria-label="' + esc(dm[1] + ' ' + dm[2]) + '"><span aria-hidden="true">' + esc(dm[2].toUpperCase()) + '</span><b aria-hidden="true">' + esc(dm[1]) + '</b></span></span>';
-      /* importance: overdue tasks are red at overdueCritical or from a critical module, else amber;
-         pending tasks are red too, on a lighter tint, so overdue still reads as the stronger */
+        '<span class="att__date" aria-label="' + esc(dm[1] + ' ' + dm[2]) + '"><span aria-hidden="true">' + esc(dm[2]) + '</span><b aria-hidden="true">' + esc(dm[1]) + '</b></span></span>';
+      /* importance: pending tasks are red on a light tint; due-today tasks are amber */
       var card = function (r, kind) {
-        var a = app(r[2]), sev = kind === 'pend' ? 'pend' : (r[1] >= IMP.overdueCritical || IMP.criticalModules.indexOf(r[2]) > -1) ? 'critical' : 'high';
+        var a = app(r[2]), sev = kind === 'pend' ? 'pend' : 'high';
         return '<button type="button" class="att__row att__row--' + sev + '" data-open="' + r[2] + '"><span class="att__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span>' +
-          '<span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + ' · ' + (kind === 'pend' ? 'pending' : 'overdue') + '</small></span><span class="att__n">' + fmt(r[1]) + '</span>' +
+          '<span class="att__lbl"><b class="ell">' + esc(r[0]) + '</b><small>' + esc(a.name) + ' · ' + (kind === 'pend' ? 'pending' : 'due today') + '</small></span><span class="att__n">' + fmt(r[1]) + '</span>' +
           '<span class="vh">, ' + (kind === 'pend' ? 'high priority' : SEV_SR[sev]) + '</span></button>';
       };
-      if (size === 'S') return head + '<span class="att__sum"><span class="wg__big">' + fmt(at.total) + '</span><span class="wg__lbl">overdue tasks</span></span>' + (at.overdue[0] ? card(at.overdue[0], 'over') : '');
+      if (size === 'S') return head + '<span class="att__sum"><span class="wg__big">' + fmt(at.today.reduce(function (n, r) { return n + r[1]; }, 0)) + '</span><span class="wg__lbl">due today</span></span>' + (at.today[0] ? card(at.today[0], 'today') : '');
       var seg = function (k, label, n) {
         return '<button type="button" class="att__tab' + (tab === k ? ' is-on' : '') + '" data-act="attTab" data-w="' + esc(it.id || '') + '" data-tab="' + k + '" aria-pressed="' + (tab === k) + '">' + label + '<span class="att__cnt">' + n + '</span></button>';
       };
-      var rows = tab === 'over' ? at.overdue : at.pending;
-      return head + '<span class="att__seg" role="group" aria-label="Show tasks">' + seg('over', 'Overdue', at.overdue.length) + seg('pend', 'Pending', at.pending.length) + '</span>' +
-        '<span class="att">' + (rows.length ? rows.slice(0, size === 'M' ? 2 : rows.length).map(function (r) { return card(r, tab); }).join('') : '<span class="att__none">Nothing ' + (tab === 'over' ? 'overdue' : 'pending') + '. Nice work.</span>') + '</span>';
+      var rows = tab === 'today' ? at.today : at.pending;
+      return head + '<span class="att__seg" role="group" aria-label="Show tasks">' + seg('pend', 'Pending', at.pending.length) + seg('today', 'Due today', at.today.length) + '</span>' +
+        '<span class="att">' + (rows.length ? rows.slice(0, size === 'M' ? 2 : rows.length).map(function (r) { return card(r, tab); }).join('') : '<span class="att__none">Nothing ' + (tab === 'today' ? 'due today' : 'pending') + '. Nice work.</span>') + '</span>';
     }
   };
   /* ================= COMMAND CENTRE WIDGETS =================
@@ -528,8 +529,8 @@
     var k = DATA.kpi('animals', S.site);
     var bg = imgSrc('dashHero') ? '<span class="hero__bg" aria-hidden="true"><img src="' + esc(imgSrc('dashHero')) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()"></span>' : '';
     var main = '<button type="button" class="hero__main" data-open="animals"><span class="hero__lbl">Total animals · ' + esc(siteName(S.site)) + '</span>' +
-      '<span class="hero__v">' + fmt(m.animals) + '</span>' + deltaChip(k.delta.value, k.deltaText + ' vs last week', k.good, '') +
-      (size === 'S' ? '' : '<span class="hero__sub">' + fmt(m.species) + ' species · ' + fmt(m.enclosures) + ' enclosures</span>') + '<span class="vh">, open Animals</span></button>';
+      '<span class="hero__v">' + fmt(m.animals) + '</span>' + deltaChip(k.delta.value, k.deltaText + ' vs last week', k.good, ' ') +
+      (size === 'S' ? '' : '<span class="hero__stats"><span class="hero__stat"><b>' + fmt(m.species) + '</b><small>Species</small></span><span class="hero__stat"><b>' + fmt(m.enclosures) + '</b><small>Enclosures</small></span></span>') + '<span class="vh">, open Animals</span></button>';
     var acts = [['Add animal', 'add', 'animals'], ['Record treatment', 'medical_services', 'medical'], ['Log feed', 'restaurant', 'diet'], ['Scan tag', 'qr_code_scanner', '']];
     var qa = size === 'S' ? '' : '<span class="hero__acts" role="group" aria-label="Quick actions">' + acts.map(function (x) {
       return '<button type="button" class="hero__act" ' + (x[2] ? 'data-open="' + x[2] + '"' : 'data-act="heroScan"') + '><span class="hero__ai"><span class="material-symbols-outlined" aria-hidden="true">' + x[1] + '</span></span><span class="hero__al">' + x[0] + '</span></button>';
@@ -613,7 +614,7 @@
       rows.slice(0, n).map(function (r) {
         var a = app(r.module);
         return '<tr role="row"><td class="ac__type" role="cell"><span class="ac__ic" ' + tileStyle(a) + '>' + glyph(a) + '</span><span>' + esc(r.type) + '</span></td>' +
-          '<td class="ac__det" role="cell"><button type="button" class="ac__open" data-open="' + r.module + '">' + thumb(r) + '<span class="ac__txt"><b>' + esc(r.title) + '</b><small>' + esc(r.who) + '</small></span></button></td>' +
+          '<td class="ac__det" role="cell"><button type="button" class="ac__open" data-open="' + r.module + '">' + thumb(r) + '<span class="ac__txt"><b>' + esc(r.title) + '</b><small>' + aid(r.who) + '</small></span></button></td>' +
           '<td class="ac__site" role="cell">' + esc(r.site) + '</td><td class="ac__st" role="cell">' + statusPill(r.status) + '</td><td class="ac__date" role="cell">' + esc(r.when) + '</td></tr>';
       }).join('') + '</tbody></table>';
   };
@@ -658,7 +659,7 @@
   function itemHd(m) {
     return '<span class="wg__hd"><span class="gl" ' + tileStyle(itemApp(m)) + '><span class="material-symbols-outlined" aria-hidden="true">' + ((ITEM_KIND[m.type] || {}).icon || 'bookmark') + '</span></span><span class="ell">' + esc(m.type) + '</span></span>';
   }
-  function wlist(rows) { return '<span class="wlist">' + rows.map(function (x) { return '<span><span>' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b></span>'; }).join('') + '</span>'; }
+  function wlist(rows) { return '<span class="wlist">' + rows.map(function (x) { return '<span><span>' + aid(x[0]) + '</span><b>' + esc(x[1]) + '</b></span>'; }).join('') + '</span>'; }
   var ITEM_RENDERERS = {
     an: function (p, size, m) {
       var sp = SPECIES[+p[1]], a = animalsFor(sp)[+p[2]];
@@ -675,7 +676,7 @@
       var top = '<span class="wg__row" style="flex:0 0 auto">' + media(p[0] === 'an' ? animalsFor(SPECIES[+p[1]])[+p[2]].id : SPECIES[+p[1]].n, m.t, '', 'width:64px;height:64px;flex:none') + '<span class="wg__col"><b class="wg__t">' + esc(sp.n) + '</b><small><i>' + esc(sp.s) + '</i></small><span><span class="tag">' + esc(sp.iucn) + '</span></span></span></span>';
       var facts = kgrid([[String(sp.a), 'Animals'], [String(sp.sites), 'Sites'], [sp.c, 'Class']]);
       if (size === 'M') return itemHd(m) + top + facts;
-      return itemHd(m) + top + facts + '<small>Animals</small>' + wlist(animalsFor(sp).slice(0, 3).map(function (a) { return [a.n + ' · ' + a.id, a.st]; })) + '<span class="trend">Next: quarterly health check · 7 Sep</span>';
+      return itemHd(m) + top + facts + '<small>Animals</small>' + wlist(animalsFor(sp).slice(0, 5).map(function (a) { return [a.n + ' · ' + a.id, a.st]; })) + '<span class="trend">Next: quarterly health check · 7 Sep</span>';
     },
     nt: function (p, size, m) {
       var n = NOTES[+p[1]], text = n.text || ('Observed in ' + n.coll + ': ' + n.tags.join(', ').toLowerCase() + '. Follow up at the next round.');
@@ -741,9 +742,11 @@
     var name = type === 'item' ? entryName({ ref: ref }) : dash ? dashName(it) : app(type).name;
     var label = widgetLabel(it);
     var sz = eff(it.size, ctx);
-    var dots = stack ? '<div class="stack-dots" role="group" aria-label="' + esc(it.name) + ' stack">' + it.items.map(function (t, i) {
-      return '<button type="button" data-act="stackTo" data-w="' + it.id + '" data-i="' + i + '" aria-label="Show ' + esc(entryName(t)) + '"' + (i === it.idx ? ' aria-current="true"' : '') + '></button>';
-    }).join('') + '</div>' : '';
+    /* stacks: "1 of 2" with previous / next (swipe and the mouse wheel still rotate) */
+    var dots = stack ? '<div class="stack-nav" role="group" aria-label="' + esc(it.name) + ' stack">' +
+      '<button type="button" class="stack-nav__b" data-act="stackStep" data-w="' + it.id + '" data-d="-1" aria-label="Previous in ' + esc(it.name) + ' stack">' + icon('chevron_left', '') + '</button>' +
+      '<span class="stack-nav__pos" aria-live="polite">' + (it.idx + 1) + ' of ' + it.items.length + '<span class="vh">: ' + esc(entryName(it.items[it.idx])) + '</span></span>' +
+      '<button type="button" class="stack-nav__b" data-act="stackStep" data-w="' + it.id + '" data-d="1" aria-label="Next in ' + esc(it.name) + ' stack">' + icon('chevron_right', '') + '</button></div>' : '';
     var target = type === 'item' ? 'data-item="' + ref + '"' : 'data-open="' + (dash ? dashOpen(it) : type) + '"';
     var statsCls = dash ? ' wg--' + type : type === 'notes' ? ' wg--notes' : app(type) && !app(type).widget ? ' wg--stats wg--' + (app(type).chart || 'columns') : '';
     /* Notes keeps its own XL / W layouts; other module widgets draw XL as L and W as M */
@@ -764,9 +767,14 @@
     var chips = bp() === 'phone' && pinned.length ? '<nav class="pin-chips" aria-label="Pinned modules">' + pinned.map(function (id) {
       var a = app(id); return '<button type="button" class="pin-chip" data-open="' + id + '" ' + tileStyle(a) + '><span class="material-symbols-outlined" aria-hidden="true">' + a.icon + '</span>' + esc(a.name) + '</button>';
     }).join('') + '</nav>' : '';
+    /* the four everyday actions sit beside the title (they used to float in a bottom dock) */
+    var acts = [['Add animal', 'add', 'data-open="animals"', 1], ['Record treatment', 'medical_services', 'data-open="medical"'], ['Log feed', 'restaurant', 'data-open="diet"'], ['Scan tag', 'qr_code_scanner', 'data-act="heroScan"']];
     return '<header class="dash-hd"><div class="dash-hd__txt"><h1 id="dashH" class="dash-hd__t">Command Centre</h1>' +
-      '<p class="dash-hd__s">' + esc(siteName(S.site)) + ', ' + esc(CFG.user.date) + '. Sample data.</p></div>' +
-      '<p class="dash-ok"><span class="material-symbols-outlined" aria-hidden="true">verified</span><span><b>' + (S.site === 'all' ? 'All ' + n + ' sites synced' : esc(siteName(S.site)) + ' synced') + '</b><small>Audit score ' + (m ? m.audit + '%' : 'n/a') + ', updated 09:00</small></span></p></header>' + chips;
+      '<p class="dash-hd__s">' + esc(siteName(S.site)) + ', sample data</p>' +
+      '<p class="dash-ok"><span class="material-symbols-outlined" aria-hidden="true">verified</span><span>' + (S.site === 'all' ? 'All ' + n + ' sites synced' : esc(siteName(S.site)) + ' synced') + ', updated 09:00. Audit score ' + (m ? m.audit + '%' : 'n/a') + '</span></p></div>' +
+      '<div class="dash-acts" role="group" aria-label="Quick actions">' + acts.map(function (x) {
+        return '<button type="button" class="dash-act' + (x[3] ? ' dash-act--primary' : '') + '" ' + x[2] + '><span class="material-symbols-outlined" aria-hidden="true">' + x[1] + '</span>' + x[0] + '</button>';
+      }).join('') + '</div></header>' + chips;
   }
   /* the home screen is one page: the Command Centre dashboard (main area + right column), scrolling vertically */
   function renderHome() {
@@ -1802,6 +1810,7 @@
       f.it.tab = el.dataset.tab; saveLayout(); renderHome();
       var b = $('[data-act="attTab"][data-w="' + el.dataset.w + '"][data-tab="' + el.dataset.tab + '"]'); if (b) b.focus({ preventScroll: true });
     },
+    stackStep: function (el) { rotateStack(el.dataset.w, +el.dataset.d); var b = $('[data-act="stackStep"][data-w="' + el.dataset.w + '"][data-d="' + el.dataset.d + '"]'); if (b) b.focus({ preventScroll: true }); },
     stackTo: function (el) { var f = findItem(el.dataset.w); if (!f) return; f.it.idx = +el.dataset.i; renderHome(); var b = $('[data-act="stackTo"][data-w="' + el.dataset.w + '"][data-i="' + el.dataset.i + '"]'); if (b) b.focus(); },
     libAdd: function (el) { openGallery({ type: el.dataset.id, size: 'M', mode: 'add' }); },
     peekOpen: function (el) { openApp(el.dataset.id); },
@@ -1945,7 +1954,7 @@
   var dg = null, pend = null, press = null;
   var DRAG_THRESHOLD = 6;
   function dragCandidate(t) {
-    if (!t || !t.closest || t.closest('.rs, .rm, .more, .stack-dots, select, input, textarea')) return null;
+    if (!t || !t.closest || t.closest('.rs, .rm, .more, .stack-dots, .stack-nav, select, input, textarea')) return null;
     return t.closest('#homePages [data-cell]');
   }
   function beginDrag(cell, e) {

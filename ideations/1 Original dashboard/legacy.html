@@ -9,8 +9,8 @@
 <meta name="theme-color" content="#F2FBF8">
 <meta name="color-scheme" content="light dark">
 <!-- config first (plain data), then apply the saved theme before any CSS paints: no flash of the wrong theme -->
-<script src="config.js"></script>
-<script src="data.js"></script>
+<script src="config.js?v=20261103a"></script>
+<script src="data.js?v=20261103a"></script>
 <script>
   (function () {
     var t = null;
@@ -33,7 +33,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=DM+Sans:opsz,wght@9..40,400..700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261103a">
 </head>
 <body>
 <div class="shell" id="shell">
@@ -57,11 +57,6 @@
         <li><button type="button" class="sn" data-open="help" data-label="Help Desk"><span class="sn__ic"><span class="material-symbols-outlined" aria-hidden="true">support_agent</span></span><span class="sn__lbl">Help Desk</span></button></li>
         <li><button type="button" class="sn" data-act="profile" data-label="Settings and appearance" aria-haspopup="menu"><span class="sn__ic"><span class="material-symbols-outlined" aria-hidden="true">settings</span></span><span class="sn__lbl">Settings</span></button></li>
       </ul>
-      <div class="side__card">
-        <b>Found a bug?</b>
-        <p>Tell the Help Desk and we will look at it today.</p>
-        <button type="button" class="btn btn--primary btn--sm" data-act="reportBug"><span class="material-symbols-outlined ico ico--sm" aria-hidden="true">bug_report</span>Report it</button>
-      </div>
     </div>
   </nav>
   <div class="side-scrim" id="sideScrim" data-act="drawerClose" hidden></div>
@@ -81,7 +76,7 @@
       <span class="site-pill__txt"><span class="site-pill__lbl">Site</span><span class="site-pill__name" id="siteLabel">All sites</span></span>
       <span class="material-symbols-outlined site-pill__chev" aria-hidden="true">expand_more</span>
     </button>
-    <button type="button" class="hsearch" id="hSearch" data-act="search" aria-label="Search modules, species, animals and notes"><span class="material-symbols-outlined ico" aria-hidden="true">search</span><span class="hsearch__ph" aria-hidden="true">Search “Animals”</span></button>
+    <button type="button" class="hsearch" id="hSearch" data-act="search" aria-label="Search modules, species, animals and notes"><span class="material-symbols-outlined ico" aria-hidden="true">search</span><span class="hsearch__ph" aria-hidden="true">Search</span></button>
     <div class="hacts">
       <button type="button" class="pill-btn edit-txt" id="editBtn" data-act="edit">Edit</button>
       <button type="button" class="round-btn" id="scanBtn" data-act="scan" aria-label="Scan a tag, QR or microchip"><span class="material-symbols-outlined ico" aria-hidden="true">qr_code_scanner</span></button>
@@ -100,6 +95,7 @@
     </div>
     <!-- the one home page: the Command Centre dashboard (app.js renders it; it scrolls vertically) -->
     <main class="page page--dash" id="homePages" aria-labelledby="dashH"></main>
+    <!-- quick actions float over the dashboard (style-6) -->
   </div>
 
   <!-- APP WINDOW (a launched module) -->
@@ -384,7 +380,7 @@
 </div>
 
 </div>
-<script src="widget-kit.js"></script>
-<script src="app.js"></script>
+<script src="widget-kit.js?v=20261103a"></script>
+<script src="app.js?v=20261103a"></script>
 </body>
 </html>

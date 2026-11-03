@@ -1,0 +1,66 @@
+/* ANTZ WIDGET STATES (widgets.html): page chrome only. Widgets use styles.css unchanged. */
+html, body.cat { height: auto; overflow: auto; }
+body.cat { background: var(--s1-page-bg, var(--wall)); color: var(--md-sys-color-on-surface); font-family: var(--font); }
+.cat-skip { position: absolute; left: 12px; top: -60px; z-index: 10; padding: 8px 12px; border-radius: 10px; background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); font-weight: 600; }
+.cat-skip:focus { top: 12px; }
+.cat-hd { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 32px;
+  background: var(--md-sys-color-surface-container-lowest); box-shadow: 0 1px 0 var(--md-sys-color-outline-variant); }
+.cat-hd__t { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cat-hd h1 { margin: 0; font: 600 20px/1.2 var(--font); }
+.cat-hd p { margin: 2px 0 0; font-size: 13px; color: var(--md-sys-color-on-surface-variant); }
+.cat-hd__ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cat-seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--md-sys-color-surface-container); }
+.cat-seg label { position: relative; min-height: 32px; padding: 0 14px; border-radius: 9px; display: inline-flex; align-items: center; font: 600 13px var(--font); cursor: pointer; color: var(--md-sys-color-on-surface-variant); }
+.cat-seg label:has(input:checked) { background: var(--md-sys-color-surface-container-lowest); color: var(--md-sys-color-on-surface); box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant); }
+.cat-seg label:has(input:focus-visible), .cat-site:focus-within { outline: 3px solid var(--ink); outline-offset: 2px; }
+.cat-site { display: inline-flex; align-items: center; gap: 4px; min-height: 38px; padding: 0 6px 0 10px; border-radius: 10px; border: 1px solid var(--md-sys-color-outline); background: var(--md-sys-color-surface-container-lowest); }
+.cat-site .material-symbols-outlined { font-size: 18px; color: var(--md-sys-color-primary); }
+.cat-site select { border: 0; background: transparent; color: var(--md-sys-color-on-surface); font: 500 14px var(--font); padding: 6px 2px; }
+.cat-site select:focus { outline: none; }
+.cat-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; padding: 24px 32px 64px; max-width: 1480px; }
+.cat-toc { position: sticky; top: 92px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; font-size: 13px; }
+.cat-toc h2 { margin: 0 0 8px; font: 600 13px var(--font); color: var(--md-sys-color-on-surface-variant); }
+.cat-toc ul, .cat-toc ol { list-style: none; margin: 0; padding: 0; }
+.cat-toc > ul > li { margin-bottom: 2px; }
+.cat-toc a { display: block; padding: 5px 8px; border-radius: 8px; color: var(--md-sys-color-on-surface); text-decoration: none; }
+.cat-toc a:hover { background: var(--hover); }
+.cat-toc > ul > li > a { font-weight: 600; }
+.cat-toc ol { margin: 2px 0 10px 10px; border-left: 1px solid var(--md-sys-color-outline-variant); }
+.cat-toc ol a { color: var(--md-sys-color-on-surface-variant); }
+.cat-soon { display: flex; justify-content: space-between; gap: 6px; padding: 5px 8px; color: var(--md-sys-color-on-surface-variant); }
+.cat-soon small { font-size: 11px; }
+.cat-main { min-width: 0; }
+.cat-sec { margin-bottom: 48px; }
+.cat-sec__hd { display: flex; gap: 14px; align-items: flex-start; }
+.cat-sec__ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, #E3C24A 30%, var(--md-sys-color-surface-container-lowest)); color: color-mix(in srgb, #E3C24A 35%, var(--md-sys-color-on-surface)); }
+.cat-sec h2 { margin: 0; font: 600 24px/1.2 var(--font); }
+.cat-sec__hd p { margin: 6px 0 0; max-width: 72ch; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface-variant); }
+.cat-sizes { margin: 12px 0 20px 54px; font-size: 13px; color: var(--md-sys-color-on-surface-variant); }
+.cat-state { padding: 20px 0 24px; border-top: 1px solid var(--md-sys-color-outline-variant); }
+.cat-state header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.cat-state h3 { margin: 0; display: flex; align-items: center; gap: 10px; font: 600 17px var(--font); }
+.cat-state header p { margin: 0; font-size: 13px; color: var(--md-sys-color-on-surface-variant); }
+.cat-n { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font: 600 12px var(--font-num); background: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface-variant); }
+.cat-specs { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.cat-spec { margin: 0; display: grid; gap: 8px; }
+.cat-spec figcaption { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.cat-spec figcaption b { font-weight: 600; }
+.cat-dim { color: var(--md-sys-color-on-surface-variant); font-variant-numeric: tabular-nums; }
+.cat-spec--na figcaption { flex-direction: column; gap: 2px; color: var(--md-sys-color-on-surface-variant); }
+.cat-stage { padding: 12px; border-radius: 20px; background: var(--md-sys-color-surface); box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant); }
+.cat-grid { margin: 0; }
+.cat-frame { border: 0; border-radius: 20px; display: block; box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant); background: transparent; }
+.cat-next p { font-size: 14px; color: var(--md-sys-color-on-surface-variant); max-width: 72ch; }
+.cat-next h2 { font: 600 20px var(--font); margin: 0 0 6px; }
+/* embed (one specimen inside a frame) */
+.cat--embed { background: var(--md-sys-color-surface); }
+.cat-embed { padding: 12px; }
+@media (max-width: 900px) { .cat-body { grid-template-columns: minmax(0, 1fr); } .cat-toc { position: static; max-height: none; } .cat-toc ol { display: none; } .cat-toc > ul { display: flex; flex-wrap: wrap; gap: 4px; } }
+@media (max-width: 640px) {
+  .cat-hd { padding: 12px 16px; position: static; }
+  .cat-body { padding: 16px 16px 48px; gap: 20px; }
+  .cat-sizes { margin-left: 0; }
+  .cat-stage { padding: 0; background: none; box-shadow: none; }
+  .cat-specs { gap: 20px; }
+  .cat-hd .btn { display: none; }
+}

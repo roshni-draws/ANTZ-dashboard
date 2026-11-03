@@ -12,7 +12,7 @@ window.ANTZ_CONFIG = {
 
   /* ── Appearance: 'system' follows the device; 'light' or 'dark' forces one.
      A person's own choice (header toggle / avatar menu) is saved and wins over this. ── */
-  theme: 'system',
+  theme: 'light',
 
   /* ── Sites: shown in the header site switcher. data.js gives each one its own
      sample numbers; "All sites" (always first in the switcher) is their sum. ── */
@@ -33,7 +33,7 @@ window.ANTZ_CONFIG = {
     'Indian Star Tortoise': 'assets/img/tortoise.jpg',
     'Purple Frog': 'assets/img/purple-frog.jpg',
     collectionsHero: 'assets/img/savannah.jpg',
-    dashHero: 'assets/img/savannah.jpg',
+    dashHero: 'assets/img/hero-banner.jpg',
     'announcement:0': 'assets/img/cubs.jpg',
     'announcement:1': 'assets/img/wild-dog-pack.jpg'
     /* No 'avatar:RS' photo: the header avatar shows initials. */
@@ -156,11 +156,32 @@ window.ANTZ_CONFIG = {
       { widget: 'action', preset: 'help', size: 'S', id: 'qa-help' },
       { widget: 'diet', size: 'L', id: 'diet' },
       { widget: 'item', ref: { type: 'species', id: 'African Wild Dog' }, size: 'L', id: 'species-wild-dog' },
-      { widget: 'helpcard', size: 'S', id: 'helpcard' },
       { widget: 'team', size: 'M', id: 'team' },
-      { widget: 'tags', size: 'S', id: 'tags' },
+      { widget: 'tags', size: 'M', id: 'tags' },
       { stack: 'Featured', size: 'L', id: 'featured', zone: 'side', items: [{ type: 'item', ref: { type: 'animal', id: 'PL-014' } }, 'announcements'] },
       { widget: 'activity', size: 'L', id: 'activity', zone: 'side' }
+    ]
+  },
+
+  /* ── Redesign page (redesign.html) ───────────────────────────────────────
+     stats   the four key numbers, as 'moduleId:index'. index picks a row from that module's
+             stats.m list (the numbers shown in its widget), e.g. 'medical:0' = In treatment,
+             'diet:0' = Feeds today, 'mortality:0' = deaths. People can change them on the page
+             (Key numbers > Change); their choice is saved in the browser and wins over this. */
+  redesign: {
+    stats: ['animals:0', 'medical:0', 'administer:1', 'audit:0'],
+     /* layout  the cards under the banner, in order (laid out like style-6). w = a dashboard panel or any
+                module as 'mod:<id>', e.g. 'mod:diet'. Panels: 'animalsBySite', 'auditCols', 'mortality',
+                'natality', 'housing', 'approvals', 'eggs', 'notes', 'stack', 'obs', 'focus', 'favs', 'rounds', 'activity', 'overdue',
+                'auditRank', 'watch', 'ann', 'feeds'. s = width in twelfths of the main column (4, 6, 8, 12);
+                z: 'side' puts a card in the right-hand column instead. Each card's ⋯ menu changes it on the
+                page; that choice is saved in the browser and wins over this. */
+    layout: [
+      { w: 'animalsBySite', s: 6 }, { w: 'auditCols', s: 6 },
+      { w: 'mortality', s: 4 }, { w: 'natality', s: 4 }, { w: 'housing', s: 4 },
+      { w: 'approvals', s: 4 }, { w: 'eggs', s: 4 }, { w: 'stack', s: 4 },
+      { w: 'focus', s: 12 },
+      { w: 'notes', z: 'side' }, { w: 'rounds', z: 'side' }, { w: 'ann', z: 'side' }, { w: 'obs', z: 'side' }
     ]
   },
 
